@@ -1,0 +1,42 @@
+{
+    "engine": "auto",
+    "language": "en-US",
+    "timeout": 5,
+    "phrase_timeout": 0.3,
+    "energy_threshold": 4000,
+    "dynamic_energy": true,
+    "pause_threshold": 0.8,
+    "wake_words": [
+        "hey assistant",
+        "ai avatar",
+        "hello bot"
+    ],
+    "commands": {
+        "estimate": [
+            "estimate",
+            "calculate",
+            "how long",
+            "time needed"
+        ],
+        "team": [
+            "who should",
+            "recommend",
+            "find team",
+            "assign"
+        ],
+        "analytics": [
+            "show analytics",
+            "report",
+            "status",
+            "insights"
+        ],
+        "help": [
+            "help",
+            "what can you do",
+            "commands"
+        ]
+    },
+    "confidence_threshold": 0.7,
+    "noise_suppression": true,
+    "auto_gain": true
+}

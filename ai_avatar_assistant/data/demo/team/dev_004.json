@@ -1,0 +1,21 @@
+{
+  "id": "dev_004",
+  "name": "David Park",
+  "role": "AI/ML Specialist",
+  "skills": [
+    "python",
+    "tensorflow",
+    "pytorch",
+    "data-science",
+    "nlp"
+  ],
+  "hourly_rate": 100,
+  "availability": "busy",
+  "experience_years": 7,
+  "specializations": [
+    "Machine Learning",
+    "Natural Language Processing"
+  ],
+  "current_workload": 90,
+  "timezone": "PST"
+}
