@@ -1,345 +1,476 @@
-# AI Avatar Assistant 🤖
+# 🤖 AI Avatar Assistant - Universal Orchestration Agent
 
-An intelligent AI-powered assistant with a floating avatar that dynamically monitors your tasks and provides helpful suggestions through interactive tooltips.
-
-## Features ✨
-
-- **Floating Avatar**: A customizable AI assistant that stays visible on your desktop
-- **Dynamic Tooltips**: Smart notifications with action buttons for quick task management
-- **Intelligent Monitoring**: AI-powered analysis of deadlines, priorities, and productivity patterns
-- **Task Management**: Built-in SQLite database for storing and managing tasks
-- **Background Scheduling**: Automatic event detection and reminder system
-- **System Tray Integration**: Runs quietly in the background with system tray controls
-- **Customizable Personality**: Configurable AI personality and behavior settings
-
-## Screenshots
-
-*Note: The avatar appears as a floating circular AI assistant on your desktop with animated tooltips showing task notifications and action buttons.*
-
-## Installation 🚀
-
-### Prerequisites
-
-- Python 3.8 or higher
-- PyQt5
-- APScheduler
-
-### Setup
-
-1. **Clone or download this project**
-   ```bash
-   cd ai_avatar_assistant
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Create sample data (optional but recommended for testing)**
-   ```bash
-   python create_sample_data.py
-   ```
-
-4. **Run the application**
-   ```bash
-   python main.py
-   ```
-
-## Usage 📖
-
-### Starting the Assistant
-
-Run the main application:
-```bash
-python main.py
-```
-
-The AI avatar will appear on your desktop (bottom-right by default) and the application will run in the system tray.
-
-### Basic Interactions
-
-- **Click the Avatar**: Opens the main assistant menu
-- **System Tray**: Right-click the tray icon for options
-- **Tooltips**: Interactive notifications with action buttons appear automatically
-- **Drag Avatar**: You can drag the avatar to reposition it on your screen
-
-### Managing Tasks
-
-Tasks can be managed through:
-- The tooltip action buttons
-- System tray menu ("Add Task", "Show Tasks")
-- Avatar click menu
-
-### Configuration
-
-Edit `data/config.json` to customize:
-- Avatar position and size
-- Notification settings and silent hours
-- AI personality (friendly, professional, casual)
-- Check intervals and behavior
-
-Example configuration:
-```json
-{
-    "avatar": {
-        "position": "bottom_right",
-        "size": 64,
-        "animation_speed": 1.0
-    },
-    "notifications": {
-        "enabled": true,
-        "silent_hours_start": "22:00",
-        "silent_hours_end": "08:00",
-        "auto_hide_timeout": 10,
-        "check_interval": 300
-    },
-    "ai": {
-        "personality": "friendly",
-        "confidence_threshold": 0.7
-    }
-}
-```
-
-## Project Structure 📁
-
-```
-ai_avatar_assistant/
-├── main.py                 # Main application entry point
-├── create_sample_data.py   # Script to create test data
-├── requirements.txt        # Python dependencies
-├── README.md              # This file
-├── ui/
-│   ├── avatar.py          # Avatar widget with animations
-│   └── tooltip.py         # Tooltip system with action buttons
-├── core/
-│   ├── database.py        # SQLite task storage
-│   ├── ai_engine.py       # AI recommendation engine
-│   ├── actions.py         # Action system for button handlers
-│   └── scheduler.py       # Background event scheduler
-├── data/
-│   ├── config.json        # Configuration settings
-│   ├── tasks.db          # SQLite database (created automatically)
-│   └── assistant.log     # Application logs
-└── assets/
-    └── icons/            # Icon assets (optional)
-```
-
-## Key Components 🧩
-
-### 1. Avatar Widget (`ui/avatar.py`)
-- Floating, draggable AI assistant
-- Smooth animations (pulse, bounce, glow)
-- Customizable appearance and position
-- Mood indicators (happy, urgent, thinking, etc.)
-
-### 2. Tooltip System (`ui/tooltip.py`)
-- Dynamic notification bubbles
-- Interactive action buttons
-- Auto-positioning near avatar
-- Fade in/out animations
-- Auto-hide with configurable timeout
-
-### 3. AI Engine (`core/ai_engine.py`)
-- Intelligent task analysis
-- Urgency calculation based on deadlines and priority
-- Productivity pattern recognition
-- Personality-based messaging
-- Learning from user actions
-
-### 4. Action System (`core/actions.py`)
-- Extensible action framework
-- Task management operations
-- External integrations (calendar, email)
-- System actions (settings, focus mode)
-- Result feedback and logging
-
-### 5. Event Scheduler (`core/scheduler.py`)
-- Background monitoring
-- Cron-based scheduling
-- Silent hours support
-- Event triggering and callbacks
-- Notification pause/resume
-
-### 6. Database (`core/database.py`)
-- SQLite-based task storage
-- Event and action logging
-- Flexible metadata support
-- Automatic reminder creation
-
-## Available Actions 🎯
-
-The assistant supports many actions triggered through tooltip buttons:
-
-**Task Management:**
-- `open_task` - View/edit task details
-- `mark_done` - Mark task as completed
-- `snooze` - Snooze notifications temporarily
-- `reschedule` - Change task deadline
-- `extend_deadline` - Add more time to deadline
-
-**Productivity:**
-- `show_tasks` - Display task overview
-- `prioritize_tasks` - Help prioritize tasks
-- `start_focus_mode` - Enter focused work mode
-- `get_suggestions` - Get AI productivity tips
-
-**System:**
-- `dismiss` - Close current notification
-- `pause_notifications` - Pause all notifications
-- `settings` - Open settings (configuration)
-
-**External:**
-- `open_calendar` - Open default calendar app
-- `open_email` - Open default email app
-- `open_file` - Open specific files
-- `open_url` - Open web links
-
-## Customization 🎨
-
-### Avatar Appearance
-- Size: Configurable in config.json (default: 64px)
-- Position: bottom_right, bottom_left, top_right, top_left, center
-- Animation Speed: Multiplier for animation timing
-- Custom Images: Place avatar.png or avatar.gif in assets/ folder
-
-### AI Personality
-Three built-in personalities:
-- **Friendly**: Warm, encouraging messages with emojis
-- **Professional**: Formal, business-appropriate tone
-- **Casual**: Relaxed, informal communication style
-
-### Notification Behavior
-- Silent Hours: Configure quiet periods
-- Auto-hide Timeout: How long tooltips stay visible
-- Check Interval: How often to scan for events
-- Urgency Thresholds: When to show different types of alerts
-
-## Development 🛠️
-
-### Adding New Actions
-
-1. Add action handler to `core/actions.py`:
-```python
-def my_custom_action(self, context: Dict) -> Dict:
-    # Your action logic here
-    return {"success": True, "message": "Action completed"}
-```
-
-2. Register in `register_action_handlers()`:
-```python
-"my_action": self.my_custom_action,
-```
-
-3. Add button label in `ui/tooltip.py`:
-```python
-"my_action": "🔧 Custom",
-```
-
-### Adding New Events
-
-Events can be scheduled through the scheduler:
-```python
-scheduler.add_one_time_event(event_data, trigger_time)
-scheduler.add_recurring_event(event_data, interval_seconds)
-```
-
-### Extending AI Intelligence
-
-The AI engine can be enhanced by:
-- Adding new analysis methods to `ai_engine.py`
-- Implementing machine learning models
-- Adding external API integrations
-- Expanding the personality system
-
-## Testing 🧪
-
-### Create Test Data
-```bash
-python create_sample_data.py --clear
-```
-
-This creates various sample tasks with different priorities and deadlines to test the assistant's behavior.
-
-### Manual Testing
-1. Add tasks with near-term deadlines
-2. Click the avatar to test menu interactions
-3. Try different action buttons in tooltips
-4. Test system tray functionality
-5. Verify notifications during work hours
-
-### Logs
-Check `data/assistant.log` for debugging information and system events.
-
-## Troubleshooting 🔧
-
-### Common Issues
-
-**Avatar doesn't appear:**
-- Check if PyQt5 is properly installed
-- Verify system tray is available
-- Check display scaling settings
-
-**No notifications:**
-- Verify silent hours configuration
-- Check if notifications are paused
-- Look for errors in assistant.log
-
-**Database errors:**
-- Ensure data/ directory is writable
-- Check SQLite installation
-- Try recreating with `--clear` flag
-
-**Performance issues:**
-- Reduce check_interval in config
-- Disable animations by setting speed to 0
-- Check system resources
-
-### Dependencies
-
-If you encounter import errors:
-```bash
-pip install --upgrade PyQt5 APScheduler requests Pillow python-dateutil
-```
-
-For older systems, you might need:
-```bash
-pip install PyQt5==5.12.3  # Use older version if needed
-```
-
-## Future Enhancements 🚀
-
-Planned features for future versions:
-- Voice interaction support
-- Cross-platform synchronization
-- Natural language task input
-- Integration with popular productivity tools
-- Mobile companion app
-- Advanced machine learning models
-- Plugin system for custom extensions
-
-## Contributing 🤝
-
-This is an independent project designed as a demonstration of AI assistant capabilities. Feel free to:
-- Fork and modify for your needs
-- Add new features and improvements
-- Create custom actions and integrations
-- Share feedback and suggestions
-
-## License 📄
-
-This project is provided as-is for educational and personal use. Modify and distribute as needed.
-
-## Support 💬
-
-For questions or issues:
-1. Check the troubleshooting section
-2. Review the logs in `data/assistant.log`
-3. Examine the configuration in `data/config.json`
-4. Try recreating sample data with `--clear` flag
+> **A comprehensive AI-powered assistant with dynamic tooltips, project estimation, team recommendations, analytics, voice notifications, and widget-based orchestration capabilities.**
 
 ---
 
-**Enjoy your AI Avatar Assistant! 🤖✨**
+## 🌟 **Overview**
 
-*The assistant learns from your interactions and becomes more helpful over time. Click on the avatar anytime you need assistance with your tasks!*
+The AI Avatar Assistant is a **universal orchestration agent** that can be embedded as a widget in any external dashboard (like ClickUp, Notion, or custom web applications) while maintaining full access to all data sources and AI capabilities. It works as a distributed AI brain that can be deployed anywhere while retaining centralized intelligence.
+
+### **🎯 Core Concept**
+- **Universal Embedding**: Deploy the AI as a widget in any external system
+- **Cross-Project Intelligence**: Access and analyze data from multiple sources simultaneously
+- **Orchestration Agent**: Detect, analyze, and act on anything across your entire tech stack
+- **Secure API Integration**: Widget-based architecture with secure API key authentication
+- **Real-time Synchronization**: Live data sync from multiple JSON folders and databases
+
+---
+
+## 🚀 **Key Features**
+
+### **🔗 Widget-Based Orchestration**
+- **Embeddable Widget**: Self-contained HTML/CSS/JavaScript widget for external dashboards
+- **Secure API**: Flask-based API server with CORS support and authentication
+- **Real-time Communication**: WebSocket-like communication between widget and AI backend
+- **Custom Integration**: One-click generation of integration code for any platform
+
+### **📊 Project Estimation Engine**
+- **AI-Powered Estimation**: Analyze project requirements and generate accurate time/cost estimates
+- **Technology Complexity Mapping**: Built-in knowledge of 50+ technologies and their complexities
+- **Team Recommendations**: Skill-based team member matching and recommendations
+- **Risk Assessment**: Identify potential risks and calculate confidence scores
+- **Historical Analysis**: Learn from past projects to improve estimation accuracy
+
+### **🗄️ Multi-Source Data Management**
+- **JSON Folder Scanning**: Configurable scanning of multiple JSON file directories
+- **Database Integration**: SQLite, MySQL, PostgreSQL, MongoDB support
+- **ClickUp API**: Native integration with ClickUp for project management data
+- **Real-time Sync**: Automatic synchronization with configurable intervals
+- **Unified Cache**: Intelligent data merging and deduplication across sources
+
+### **🎙️ Voice & Analytics**
+- **Voice Notifications**: Cross-platform text-to-speech with multiple voice options
+- **Live Analytics**: Real-time productivity analysis and insights
+- **Visual Reports**: Interactive HTML reports with voice narration
+- **Focus Mode**: Distraction-free productivity sessions
+- **Smart Alerts**: AI-driven notifications based on productivity patterns
+
+### **⚙️ Configuration & Management**
+- **Settings Dashboard**: Comprehensive configuration interface
+- **Widget Manager**: Visual tool for creating and managing widget integrations
+- **Data Source Configuration**: GUI for setting up multiple data connections
+- **API Key Management**: Secure generation and management of API keys
+- **Export/Import**: Configuration backup and restoration
+
+---
+
+## 🏗️ **Architecture**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AI Avatar Assistant Core                     │
+├─────────────────────────────────────────────────────────────────┤
+│  🧠 AI Engine    📊 Analytics    🎯 Estimator    🎙️ Voice       │
+│  📋 Scheduler    🔧 Actions      💾 Database     📈 Reports     │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                    ┌──────────▼──────────┐
+                    │   Widget API Server │
+                    │    (Flask:5555)     │
+                    └──────────┬──────────┘
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+   ┌────▼────┐         ┌───────▼───────┐      ┌──────▼──────┐
+   │ClickUp  │         │ Custom Web    │      │   Notion    │
+   │Dashboard│         │ Dashboard     │      │   Widget    │
+   └─────────┘         └───────────────┘      └─────────────┘
+```
+
+### **Data Flow**
+1. **Data Sources** → **Data Source Manager** → **Unified Cache**
+2. **AI Engine** → **Analytics Engine** → **Insights & Recommendations**
+3. **Widget API** → **External Dashboards** → **User Interactions**
+4. **Project Estimator** → **Team Matcher** → **Difficulty Analysis**
+
+---
+
+## 📁 **Project Structure**
+
+```
+ai_avatar_assistant/
+├── 📂 core/                    # Core business logic
+│   ├── ai_engine.py           # Main AI processing engine
+│   ├── action_system.py       # Action execution system
+│   ├── analytics_engine.py    # Live analytics and insights
+│   ├── data_source_manager.py # Multi-source data integration
+│   ├── database.py           # SQLite database management
+│   ├── project_estimator.py  # Project estimation engine
+│   ├── report_generator.py   # Report generation system
+│   ├── scheduler.py          # Event scheduling and monitoring
+│   ├── voice_system.py       # Voice notification system
+│   └── widget_api.py         # Widget API and integration
+├── 📂 ui/                     # User interface components
+│   ├── analytics_dashboard.py # Analytics visualization
+│   ├── avatar.py             # Main avatar component
+│   ├── chat_interface.py     # Conversational AI interface
+│   ├── focus_mode.py         # Focus mode overlay
+│   ├── settings_dashboard.py # Settings and configuration
+│   ├── task_dialog.py        # Task management dialogs
+│   ├── tooltip.py            # Dynamic tooltip system
+│   └── widget_integration_dialog.py # Widget management
+├── 📂 data/                   # Data storage
+│   ├── config.json           # Application configuration
+│   ├── data_sources.json     # Data source configurations
+│   ├── estimation_knowledge.json # Project estimation knowledge
+│   ├── tasks.db              # SQLite task database
+│   ├── widget_api_config.json # Widget API settings
+│   └── 📂 reports/           # Generated reports
+├── 📂 logs/                   # Application logs
+├── 🔧 main.py                # Main application entry point
+├── 📋 requirements.txt       # Python dependencies
+└── 📖 README.md             # This documentation
+```
+
+---
+
+## 🚀 **Quick Start**
+
+### **1. Installation**
+
+```bash
+# Clone or download the AI Avatar Assistant
+cd ai_avatar_assistant
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Create required directories
+mkdir -p data logs assets data/projects data/reports
+
+# Optional: Add your avatar icon
+# Place avatar.png in the assets/ directory
+```
+
+### **2. Basic Usage**
+
+```bash
+# Start the AI Avatar Assistant
+python main.py
+```
+
+The application will:
+- ✅ Start in the system tray
+- ✅ Show the main interface
+- ✅ Initialize all core systems
+- ✅ Be ready for widget integration
+
+### **3. Widget Integration**
+
+1. **Open Widget Manager**: Click "🔗 Widget Manager" or use system tray
+2. **Create Integration**: Fill in your dashboard details
+3. **Copy Code**: Get the generated integration code
+4. **Embed Widget**: Paste into your external dashboard
+
+#### **Example Integration for ClickUp Dashboard:**
+
+```html
+<!-- AI Avatar Assistant Widget Integration -->
+<div id="ai-avatar-widget-container"></div>
+
+<script>
+(function() {
+    const iframe = document.createElement('iframe');
+    iframe.src = 'http://localhost:5555/widget/embed/widget_abc123xyz';
+    iframe.style.width = '400px';
+    iframe.style.height = '500px';
+    iframe.style.border = '1px solid #ddd';
+    iframe.style.borderRadius = '8px';
+    iframe.frameBorder = '0';
+    
+    document.getElementById('ai-avatar-widget-container').appendChild(iframe);
+    
+    // Optional: Custom API interactions
+    window.AIAvatar = {
+        async estimate(projectData) {
+            const response = await fetch('http://localhost:5555/api/estimate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    widget_id: 'widget_abc123xyz',
+                    api_key: 'ak_your_api_key',
+                    ...projectData
+                })
+            });
+            return await response.json();
+        }
+    };
+})();
+</script>
+```
+
+---
+
+## 🔧 **Configuration**
+
+### **Data Sources Setup**
+
+1. **JSON Folders**: Configure folders to scan for project/team data
+   ```json
+   {
+     "folder_path": "/path/to/your/json/files",
+     "file_pattern": "*.json",
+     "recursive": true
+   }
+   ```
+
+2. **Database Connections**: Connect to MySQL, PostgreSQL, MongoDB
+   ```json
+   {
+     "host": "localhost",
+     "database": "your_db",
+     "username": "user",
+     "password": "pass"
+   }
+   ```
+
+3. **ClickUp Integration**: Connect to ClickUp API
+   ```json
+   {
+     "api_key": "pk_your_clickup_token",
+     "team_id": "your_team_id"
+   }
+   ```
+
+### **Widget API Configuration**
+
+The Widget API server runs on `localhost:5555` by default and provides:
+
+- **🔐 Secure Authentication**: API key-based access control
+- **📡 RESTful Endpoints**: Full API access to all AI capabilities
+- **🌐 CORS Support**: Cross-origin requests for web integration
+- **📊 Real-time Data**: Live synchronization with all data sources
+
+#### **API Endpoints:**
+- `POST /api/chat` - Conversational AI
+- `POST /api/estimate` - Project estimation
+- `GET /api/analytics` - Real-time analytics
+- `GET /api/data/projects` - Project data access
+- `GET /api/data/team` - Team member data
+- `POST /api/actions` - Action execution
+
+---
+
+## 🎯 **Use Cases**
+
+### **1. ClickUp Dashboard Integration**
+Embed the AI assistant directly in your ClickUp dashboard for:
+- **Project Estimation**: Instant estimates for new projects
+- **Team Recommendations**: Skill-based team member suggestions
+- **Productivity Analytics**: Real-time insights on team performance
+- **Conversational AI**: Natural language project management
+
+### **2. Custom Web Dashboard**
+Add AI orchestration to any web application:
+- **Cross-system Data**: Access data from multiple tools simultaneously
+- **Intelligent Insights**: AI-powered recommendations and alerts
+- **Voice Notifications**: Audio feedback for important events
+- **Automated Reporting**: Generate and share visual reports
+
+### **3. Development Workflow**
+Integrate into development tools and IDEs:
+- **Project Complexity Analysis**: Automatic difficulty assessment
+- **Resource Planning**: Estimate time and team requirements
+- **Risk Assessment**: Identify potential project risks
+- **Historical Learning**: Improve estimates based on past projects
+
+---
+
+## 🎙️ **Voice & Analytics**
+
+### **Voice Notifications**
+- **Cross-platform TTS**: Works on Windows, macOS, and Linux
+- **Multiple Voices**: Choose from different voice options
+- **Smart Interrupts**: Priority-based notification system
+- **Custom Personas**: Different voice styles for different types of notifications
+
+### **Live Analytics**
+- **Productivity Monitoring**: Real-time tracking of work patterns
+- **Anomaly Detection**: Identify unusual productivity patterns
+- **Predictive Insights**: AI-powered recommendations for optimization
+- **Visual Reports**: Interactive charts and graphs with voice narration
+
+---
+
+## 🔒 **Security**
+
+### **API Security**
+- **API Key Authentication**: Secure token-based access control
+- **Domain Validation**: Restrict widget usage to authorized domains
+- **Request Rate Limiting**: Prevent API abuse
+- **Usage Tracking**: Monitor and audit API usage
+
+### **Data Privacy**
+- **Local Processing**: All AI processing happens locally
+- **Configurable Data Sources**: Choose what data to include
+- **Secure Storage**: Encrypted storage of sensitive configurations
+- **No External Dependencies**: Works completely offline
+
+---
+
+## 🚀 **Advanced Features**
+
+### **Project Estimation**
+The AI can analyze project descriptions and provide comprehensive estimates:
+
+```python
+# Example usage through the API
+estimate_request = {
+    "project_description": "Build a React e-commerce website with payment integration",
+    "requirements": [
+        "User authentication and registration",
+        "Product catalog with search",
+        "Shopping cart functionality",
+        "Stripe payment integration",
+        "Admin dashboard"
+    ],
+    "technologies": ["react", "node.js", "postgresql", "stripe"],
+    "deadline": "2024-03-15"
+}
+
+# AI provides:
+# - Total hours estimate (optimistic/realistic/pessimistic)
+# - Difficulty level and confidence score
+# - Risk factors and mitigation strategies
+# - Recommended team size and roles
+# - Phase breakdown and timeline
+# - Similar project comparisons
+```
+
+### **Team Recommendations**
+Skill-based matching of team members to project requirements:
+
+```python
+# The AI analyzes:
+# - Required technologies and skills
+# - Team member skill profiles
+# - Availability and workload
+# - Past project performance
+# - Skill complementarity
+
+# Provides:
+# - Ranked team member recommendations
+# - Skill match scores
+# - Estimated hourly rates
+# - Alternative team compositions
+```
+
+### **Cross-Project Analytics**
+Unified insights across all your projects and tools:
+
+```python
+# Analytics across multiple data sources:
+# - ClickUp tasks and projects
+# - GitHub repositories and commits
+# - Slack communication patterns
+# - Time tracking data
+# - Custom JSON datasets
+
+# Provides insights on:
+# - Cross-project productivity trends
+# - Resource allocation optimization
+# - Skill gap analysis
+# - Project success predictors
+```
+
+---
+
+## 🛠️ **Development**
+
+### **Extending the System**
+
+1. **Add New Data Sources**: Implement new connectors in `data_source_manager.py`
+2. **Custom Actions**: Extend the action system in `action_system.py`
+3. **New UI Components**: Add interfaces in the `ui/` directory
+4. **API Endpoints**: Expand the widget API in `widget_api.py`
+
+### **Testing**
+
+```bash
+# Test individual components
+python -m core.data_source_manager
+python -m core.project_estimator
+python -m core.widget_api
+
+# Test widget integration
+python -m ui.widget_integration_dialog
+```
+
+### **Deployment**
+
+For production deployment:
+
+1. **Secure the API**: Use HTTPS and secure API keys
+2. **Configure Domains**: Restrict widget usage to authorized domains
+3. **Monitor Usage**: Set up logging and monitoring
+4. **Backup Data**: Regular backups of configuration and data
+
+---
+
+## 🤝 **Contributing**
+
+The AI Avatar Assistant is designed to be modular and extensible. Areas for contribution:
+
+- **New Data Source Connectors** (Jira, Asana, Trello, etc.)
+- **Enhanced AI Capabilities** (ML models, NLP improvements)
+- **Additional UI Components** (mobile app, browser extension)
+- **Integration Templates** (popular dashboard platforms)
+- **Localization** (multi-language support)
+
+---
+
+## 📊 **System Requirements**
+
+### **Minimum Requirements**
+- **OS**: Windows 10, macOS 10.14, or Linux (Ubuntu 18.04+)
+- **Python**: 3.8 or higher
+- **RAM**: 4GB minimum, 8GB recommended
+- **Storage**: 500MB for application and data
+- **Network**: Local network access for widget API
+
+### **Optional Requirements**
+- **Database**: MySQL, PostgreSQL, or MongoDB for external data
+- **APIs**: ClickUp API key for project management integration
+- **Audio**: Speakers or headphones for voice notifications
+
+---
+
+## 🎯 **Roadmap**
+
+### **Upcoming Features**
+- **🔮 Advanced AI Models**: Integration with GPT and other LLMs
+- **📱 Mobile App**: Native mobile interface for iOS and Android
+- **🔗 More Integrations**: Jira, Asana, Notion, GitHub, GitLab
+- **🌐 Cloud Deployment**: Hosted version with multi-tenant support
+- **📈 Advanced Analytics**: Machine learning for better predictions
+- **🎨 Customizable UI**: Themes and branding options for widgets
+
+### **Long-term Vision**
+Transform into a comprehensive **AI-powered workspace orchestration platform** that can:
+- **Understand** context across all your tools and projects
+- **Predict** potential issues before they occur
+- **Recommend** optimal workflows and resource allocation
+- **Automate** routine tasks and decisions
+- **Learn** from your patterns to continuously improve
+
+---
+
+## 📞 **Support**
+
+For questions, issues, or feature requests:
+
+1. **Check the logs**: Look in the `logs/` directory for error details
+2. **Review configuration**: Ensure all data sources are properly configured
+3. **Test components**: Use the built-in testing features
+4. **Widget API**: Verify the API server is running on port 5555
+
+---
+
+## 📄 **License**
+
+This project is provided as-is for educational and development purposes. Please ensure compliance with all third-party service terms of use when integrating with external APIs.
+
+---
+
+**🚀 Ready to transform your workflow with AI-powered orchestration? Start by running `python main.py` and explore the endless possibilities!**

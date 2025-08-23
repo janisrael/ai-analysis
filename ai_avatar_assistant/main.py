@@ -1,1093 +1,989 @@
 #!/usr/bin/env python3
 """
 AI Avatar Assistant - Main Application
-
-A smart AI assistant with floating avatar and dynamic tooltips for task management.
+A comprehensive AI-powered assistant with dynamic tooltips, project estimation,
+team recommendations, analytics, voice notifications, and widget-based orchestration.
 """
 
 import sys
 import os
 import logging
-from datetime import datetime, timedelta
-from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QAction, QMessageBox
-from PyQt5.QtCore import QTimer, pyqtSlot
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QBrush, QColor
+import json
+from datetime import datetime
+from typing import Dict, Any
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 
-from ui.avatar import AvatarWidget
-from ui.tooltip import TooltipWidget
-from ui.task_dialog import TaskDialog, QuickTaskDialog
-from ui.focus_mode import FocusModeManager
-from core.database import TaskDatabase
+# Import core components
 from core.ai_engine import AIEngine
-from core.actions import ActionSystem
+from core.action_system import ActionSystem
+from core.database import TaskDatabase
 from core.scheduler import EventScheduler
 from core.voice_system import VoiceNotificationSystem
-from core.external_apis import ExternalAPIManager
 from core.analytics_engine import LiveAnalyticsEngine
 from core.report_generator import ReportGenerator
+from core.data_source_manager import DataSourceManager
+from core.project_estimator import ProjectEstimator
+from core.widget_api import WidgetIntegrationManager
+
+# Import UI components
+from ui.avatar import Avatar
+from ui.tooltip import DynamicTooltip
+from ui.task_dialog import TaskDialog
+from ui.focus_mode import FocusMode
 from ui.analytics_dashboard import AnalyticsDashboard
 from ui.chat_interface import ChatInterface
+from ui.settings_dashboard import SettingsDashboard
+from ui.widget_integration_dialog import WidgetIntegrationDialog
 
-class AIAvatarAssistant:
-    """Main application class that coordinates all components"""
+class AIAvatarAssistant(QMainWindow):
+    """Main AI Avatar Assistant Application with Universal Orchestration"""
     
     def __init__(self):
-        self.app = QApplication(sys.argv)
-        self.app.setQuitOnLastWindowClosed(False)  # Keep running in system tray
+        super().__init__()
         
-        # Initialize logging
+        # Setup logging
         self.setup_logging()
         self.logger = logging.getLogger(__name__)
         
-        # Initialize components
-        self.init_components()
+        # Initialize core systems
+        self.init_core_systems()
+        
+        # Initialize UI components
+        self.init_ui_components()
         
         # Setup system tray
         self.setup_system_tray()
         
-        # Connect signals
-        self.connect_signals()
+        # Start background services
+        self.start_background_services()
         
-        # Setup timers
-        self.setup_timers()
+        # Setup timers and signals
+        self.setup_timers_and_signals()
         
-        self.logger.info("AI Avatar Assistant initialized successfully")
+        self.logger.info("🚀 AI Avatar Assistant initialized successfully")
     
     def setup_logging(self):
-        """Setup application logging"""
+        """Setup logging configuration"""
+        os.makedirs("logs", exist_ok=True)
+        
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('data/assistant.log'),
+                logging.FileHandler(f"logs/ai_avatar_{datetime.now().strftime('%Y%m%d')}.log"),
                 logging.StreamHandler()
             ]
         )
     
-    def init_components(self):
-        """Initialize all application components"""
-        try:
-            # Core components
-            self.db = TaskDatabase()
-            self.ai_engine = AIEngine()
-            self.action_system = ActionSystem()
-            self.scheduler = EventScheduler()
-            self.voice_system = VoiceNotificationSystem()
-            self.api_manager = ExternalAPIManager()
-            self.analytics_engine = LiveAnalyticsEngine()
-            self.report_generator = ReportGenerator("data/tasks.db", self.analytics_engine, self.voice_system)
-            
-            # UI components
-            self.avatar = AvatarWidget()
-            self.tooltip = TooltipWidget()
-            self.focus_manager = FocusModeManager(self)
-            self.analytics_dashboard = AnalyticsDashboard()
-            self.chat_interface = ChatInterface(
-                self.db, self.analytics_engine, self.action_system, 
-                self.voice_system, self.report_generator
-            )
-            
-            # State variables
-            self.is_running = False
-            self.current_notification = None
-            
-            self.logger.info("All components initialized")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to initialize components: {e}")
-            raise
+    def init_core_systems(self):
+        """Initialize core system components"""
+        self.logger.info("Initializing core systems...")
+        
+        # Database
+        self.db = TaskDatabase()
+        
+        # Data source management
+        self.data_source_manager = DataSourceManager()
+        
+        # AI Engine
+        self.ai_engine = AIEngine()
+        
+        # Project estimation engine
+        self.project_estimator = ProjectEstimator(self.data_source_manager)
+        
+        # Analytics engine
+        self.analytics_engine = LiveAnalyticsEngine()
+        
+        # Report generator
+        self.report_generator = ReportGenerator(
+            self.db.db_path, 
+            self.analytics_engine,
+            None  # Voice system will be set later
+        )
+        
+        # Action system
+        self.action_system = ActionSystem(self.db)
+        
+        # Event scheduler
+        self.scheduler = EventScheduler(self.db, self.ai_engine)
+        
+        # Voice notification system
+        self.voice_system = VoiceNotificationSystem()
+        self.report_generator.voice_system = self.voice_system
+        
+        # Widget integration manager
+        self.widget_integration_manager = WidgetIntegrationManager(
+            self, self.data_source_manager, self.project_estimator
+        )
+        
+        self.logger.info("✅ Core systems initialized")
+    
+    def init_ui_components(self):
+        """Initialize UI components"""
+        self.logger.info("Initializing UI components...")
+        
+        # Main window setup
+        self.setWindowTitle("AI Avatar Assistant - Universal Orchestration")
+        self.setFixedSize(400, 300)
+        
+        # Avatar
+        self.avatar = Avatar()
+        self.avatar.clicked.connect(self.on_avatar_clicked)
+        
+        # Dynamic tooltip
+        self.tooltip = DynamicTooltip(self.ai_engine, self.action_system)
+        
+        # Analytics dashboard
+        self.analytics_dashboard = AnalyticsDashboard()
+        
+        # Chat interface
+        self.chat_interface = ChatInterface(
+            self.db, 
+            self.analytics_engine, 
+            self.action_system,
+            self.voice_system,
+            self.report_generator
+        )
+        
+        # Settings dashboard
+        self.settings_dashboard = SettingsDashboard(self.data_source_manager)
+        
+        # Widget integration dialog
+        self.widget_integration_dialog = WidgetIntegrationDialog(
+            self.widget_integration_manager
+        )
+        
+        # Task dialog
+        self.task_dialog = TaskDialog(self.db)
+        
+        # Focus mode
+        self.focus_mode = FocusMode()
+        
+        # Central widget with avatar
+        central_widget = QWidget()
+        layout = QVBoxLayout()
+        
+        # Welcome message
+        welcome_label = QLabel("🤖 AI Avatar Assistant")
+        welcome_label.setAlignment(Qt.AlignCenter)
+        welcome_label.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c3e50;
+                margin: 20px;
+            }
+        """)
+        layout.addWidget(welcome_label)
+        
+        # Status label
+        self.status_label = QLabel("Universal Orchestration Agent Ready")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        self.status_label.setStyleSheet("""
+            QLabel {
+                font-size: 12px;
+                color: #27ae60;
+                margin: 10px;
+                font-style: italic;
+            }
+        """)
+        layout.addWidget(self.status_label)
+        
+        # Avatar container
+        avatar_container = QWidget()
+        avatar_layout = QHBoxLayout()
+        avatar_layout.addStretch()
+        avatar_layout.addWidget(self.avatar)
+        avatar_layout.addStretch()
+        avatar_container.setLayout(avatar_layout)
+        layout.addWidget(avatar_container)
+        
+        # Quick actions
+        actions_group = QGroupBox("Quick Actions")
+        actions_layout = QVBoxLayout()
+        
+        # Action buttons
+        button_layout = QGridLayout()
+        
+        chat_btn = QPushButton("💬 Chat Assistant")
+        chat_btn.clicked.connect(self.show_chat_interface)
+        button_layout.addWidget(chat_btn, 0, 0)
+        
+        estimate_btn = QPushButton("📊 Estimate Project")
+        estimate_btn.clicked.connect(self.show_project_estimation)
+        button_layout.addWidget(estimate_btn, 0, 1)
+        
+        analytics_btn = QPushButton("📈 Analytics")
+        analytics_btn.clicked.connect(self.show_analytics_dashboard)
+        button_layout.addWidget(analytics_btn, 1, 0)
+        
+        settings_btn = QPushButton("⚙️ Settings")
+        settings_btn.clicked.connect(self.show_settings_dashboard)
+        button_layout.addWidget(settings_btn, 1, 1)
+        
+        widget_btn = QPushButton("🔗 Widget Manager")
+        widget_btn.clicked.connect(self.show_widget_integration)
+        button_layout.addWidget(widget_btn, 2, 0)
+        
+        focus_btn = QPushButton("🎯 Focus Mode")
+        focus_btn.clicked.connect(self.start_focus_mode)
+        button_layout.addWidget(focus_btn, 2, 1)
+        
+        actions_layout.addLayout(button_layout)
+        actions_group.setLayout(actions_layout)
+        layout.addWidget(actions_group)
+        
+        layout.addStretch()
+        
+        central_widget.setLayout(layout)
+        self.setCentralWidget(central_widget)
+        
+        # Apply styling
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f8f9fa;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-weight: bold;
+                margin: 2px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #bdc3c7;
+                border-radius: 8px;
+                margin: 10px;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                color: #2c3e50;
+            }
+        """)
+        
+        self.logger.info("✅ UI components initialized")
     
     def setup_system_tray(self):
         """Setup system tray icon and menu"""
-        if not QSystemTrayIcon.isSystemTrayAvailable():
-            QMessageBox.critical(None, "System Tray", 
-                               "System tray is not available on this system.")
-            sys.exit(1)
+        self.logger.info("Setting up system tray...")
         
         # Create tray icon
-        self.tray_icon = QSystemTrayIcon()
-        self.tray_icon.setIcon(self.create_tray_icon())
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(QIcon("assets/avatar.png"))  # You'll need to add this icon
+        self.tray_icon.setToolTip("AI Avatar Assistant - Universal Orchestration")
         
-        # Create context menu
+        # Create tray menu
         tray_menu = QMenu()
         
-        # Show/Hide Avatar
-        self.toggle_action = QAction("Hide Avatar", None)
-        self.toggle_action.triggered.connect(self.toggle_avatar_visibility)
-        tray_menu.addAction(self.toggle_action)
+        # Main sections
+        show_action = QAction("🏠 Show Assistant", self)
+        show_action.triggered.connect(self.show)
+        tray_menu.addAction(show_action)
         
         tray_menu.addSeparator()
         
-        # Quick Add Task
-        quick_add_action = QAction("➕ Quick Add Task", None)
-        quick_add_action.triggered.connect(self.show_add_task_dialog)
-        tray_menu.addAction(quick_add_action)
+        # Quick actions
+        chat_action = QAction("💬 Open Chat", self)
+        chat_action.triggered.connect(self.show_chat_interface)
+        tray_menu.addAction(chat_action)
         
-        # Create Full Task
-        full_task_action = QAction("📝 Create Task...", None)
-        full_task_action.triggered.connect(lambda: self.show_full_task_dialog())
-        tray_menu.addAction(full_task_action)
+        estimate_action = QAction("📊 Project Estimation", self)
+        estimate_action.triggered.connect(self.show_project_estimation)
+        tray_menu.addAction(estimate_action)
         
-        # Show Tasks
-        show_tasks_action = QAction("📋 Show Tasks", None)
-        show_tasks_action.triggered.connect(self.show_tasks_overview)
-        tray_menu.addAction(show_tasks_action)
-        
-        tray_menu.addSeparator()
-        
-        # Focus Mode submenu
-        focus_menu = tray_menu.addMenu("🎯 Focus Mode")
-        
-        start_focus_action = QAction("Start 25min Session", None)
-        start_focus_action.triggered.connect(lambda: self.start_focus_mode())
-        focus_menu.addAction(start_focus_action)
-        
-        custom_focus_action = QAction("Custom Duration...", None)
-        custom_focus_action.triggered.connect(self.show_custom_focus_dialog)
-        focus_menu.addAction(custom_focus_action)
-        
-        self.stop_focus_action = QAction("Stop Current Session", None)
-        self.stop_focus_action.triggered.connect(self.stop_focus_session)
-        self.stop_focus_action.setEnabled(False)
-        focus_menu.addAction(self.stop_focus_action)
-        
-        tray_menu.addSeparator()
-        
-        # Voice Control submenu
-        voice_menu = tray_menu.addMenu("🎙️ Voice")
-        
-        self.voice_enabled_action = QAction("Enable Voice Notifications", None)
-        self.voice_enabled_action.setCheckable(True)
-        self.voice_enabled_action.setChecked(self.voice_system.enabled)
-        self.voice_enabled_action.triggered.connect(self.toggle_voice_notifications)
-        voice_menu.addAction(self.voice_enabled_action)
-        
-        voice_test_action = QAction("Test Voice", None)
-        voice_test_action.triggered.connect(self.test_voice_system)
-        voice_menu.addAction(voice_test_action)
-        
-        voice_settings_action = QAction("Voice Settings...", None)
-        voice_settings_action.triggered.connect(self.show_voice_settings)
-        voice_menu.addAction(voice_settings_action)
-        
-        # Pause Notifications
-        self.pause_action = QAction("⏸️ Pause Notifications", None)
-        self.pause_action.triggered.connect(self.toggle_notifications)
-        tray_menu.addAction(self.pause_action)
-        
-        # Statistics
-        stats_action = QAction("📊 Show Statistics", None)
-        stats_action.triggered.connect(self.show_statistics)
-        tray_menu.addAction(stats_action)
-        
-        # Analytics Dashboard
-        analytics_action = QAction("📈 Analytics Dashboard", None)
+        analytics_action = QAction("📈 Analytics Dashboard", self)
         analytics_action.triggered.connect(self.show_analytics_dashboard)
         tray_menu.addAction(analytics_action)
         
-        # Settings
-        settings_action = QAction("⚙️ Settings", None)
-        settings_action.triggered.connect(self.show_settings)
-        tray_menu.addAction(settings_action)
-        
         tray_menu.addSeparator()
         
-        # Exit
-        exit_action = QAction("🚪 Exit", None)
-        exit_action.triggered.connect(self.quit_application)
-        tray_menu.addAction(exit_action)
+        # Widget management
+        widget_menu = QMenu("🔗 Widget Integration", self)
+        
+        widget_manager_action = QAction("📱 Widget Manager", self)
+        widget_manager_action.triggered.connect(self.show_widget_integration)
+        widget_menu.addAction(widget_manager_action)
+        
+        start_api_action = QAction("▶️ Start Widget API", self)
+        start_api_action.triggered.connect(self.start_widget_api)
+        widget_menu.addAction(start_api_action)
+        
+        stop_api_action = QAction("⏹️ Stop Widget API", self)
+        stop_api_action.triggered.connect(self.stop_widget_api)
+        widget_menu.addAction(stop_api_action)
+        
+        tray_menu.addMenu(widget_menu)
+        
+        # Voice menu
+        voice_menu = QMenu("🎙️ Voice", self)
+        
+        toggle_voice_action = QAction("🔊 Toggle Voice Notifications", self)
+        toggle_voice_action.triggered.connect(self.toggle_voice_notifications)
+        voice_menu.addAction(toggle_voice_action)
+        
+        test_voice_action = QAction("🧪 Test Voice", self)
+        test_voice_action.triggered.connect(self.test_voice_system)
+        voice_menu.addAction(test_voice_action)
+        
+        voice_settings_action = QAction("⚙️ Voice Settings", self)
+        voice_settings_action.triggered.connect(self.show_voice_settings)
+        voice_menu.addAction(voice_settings_action)
+        
+        tray_menu.addMenu(voice_menu)
+        
+        # Settings and tools
+        tray_menu.addSeparator()
+        
+        settings_action = QAction("⚙️ Settings", self)
+        settings_action.triggered.connect(self.show_settings_dashboard)
+        tray_menu.addAction(settings_action)
+        
+        focus_action = QAction("🎯 Focus Mode", self)
+        focus_action.triggered.connect(self.start_focus_mode)
+        tray_menu.addAction(focus_action)
+        
+        # System actions
+        tray_menu.addSeparator()
+        
+        status_action = QAction("⚡ System Status", self)
+        status_action.triggered.connect(self.show_system_status)
+        tray_menu.addAction(status_action)
+        
+        quit_action = QAction("❌ Quit", self)
+        quit_action.triggered.connect(self.quit_application)
+        tray_menu.addAction(quit_action)
         
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
         
-        # Tray icon activation
+        # Connect tray icon activation
         self.tray_icon.activated.connect(self.on_tray_icon_activated)
+        
+        self.logger.info("✅ System tray setup complete")
     
-    def create_tray_icon(self):
-        """Create system tray icon"""
-        # Create a simple icon programmatically
-        pixmap = QPixmap(32, 32)
-        pixmap.fill(QColor(0, 0, 0, 0))  # Transparent background
+    def start_background_services(self):
+        """Start background services"""
+        self.logger.info("Starting background services...")
         
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
+        # Start event scheduler
+        self.scheduler.start()
         
-        # Draw a simple AI icon
-        painter.setBrush(QBrush(QColor(74, 144, 226)))
-        painter.drawEllipse(4, 4, 24, 24)
+        # Start data source synchronization
+        self.data_source_manager.start_monitoring()
         
-        painter.setBrush(QBrush(QColor(255, 255, 255)))
-        painter.drawEllipse(8, 10, 4, 4)  # Left eye
-        painter.drawEllipse(20, 10, 4, 4)  # Right eye
-        painter.drawEllipse(12, 18, 8, 4)  # Mouth
+        # Initialize widget API (optional - can be started manually)
+        # self.widget_integration_manager.initialize_widget_api()
         
-        painter.end()
-        
-        return QIcon(pixmap)
+        self.logger.info("✅ Background services started")
     
-    def connect_signals(self):
-        """Connect signals between components"""
-        # Avatar signals
-        self.avatar.avatar_clicked.connect(self.on_avatar_clicked)
-        self.avatar.avatar_hovered.connect(self.on_avatar_hovered)
-        
-        # Tooltip signals
-        self.tooltip.action_triggered.connect(self.on_action_triggered)
-        self.tooltip.tooltip_closed.connect(self.on_tooltip_closed)
-        
-        # Scheduler callbacks
-        self.scheduler.register_default_callback(self.on_event_triggered)
-        
-        # Analytics dashboard signals
-        self.analytics_dashboard.refresh_requested.connect(self.refresh_analytics_data)
-        
-        # Chat interface signals
-        self.chat_interface.action_triggered.connect(self.on_action_triggered)
-    
-    def setup_timers(self):
-        """Setup application timers"""
-        # Periodic status update timer
-        self.status_timer = QTimer()
-        self.status_timer.timeout.connect(self.update_status)
-        self.status_timer.start(60000)  # Every minute
+    def setup_timers_and_signals(self):
+        """Setup timers and signal connections"""
+        self.logger.info("Setting up timers and signals...")
         
         # Analytics update timer
         self.analytics_timer = QTimer()
         self.analytics_timer.timeout.connect(self.update_analytics_periodically)
-        self.analytics_timer.start(600000)  # Every 10 minutes
+        self.analytics_timer.start(600000)  # 10 minutes
+        
+        # Status update timer
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.update_system_status)
+        self.status_timer.start(30000)  # 30 seconds
+        
+        # Connect signals
+        self.scheduler.event_triggered.connect(self.on_event_triggered)
+        self.action_system.action_executed.connect(self.on_action_triggered)
+        self.analytics_dashboard.refresh_requested.connect(self.refresh_analytics_data)
+        self.chat_interface.action_triggered.connect(self.on_action_triggered)
+        self.widget_integration_dialog.integration_created.connect(self.on_widget_integration_created)
+        self.settings_dashboard.settings_changed.connect(self.on_settings_changed)
+        
+        self.logger.info("✅ Timers and signals configured")
     
-    def start(self):
-        """Start the application"""
-        if self.is_running:
-            return
-        
-        self.is_running = True
-        
-        # Show avatar
-        self.avatar.show_avatar()
-        
-        # Start scheduler
-        self.scheduler.start()
-        
-        # Show welcome message
-        welcome_data = {
-            "type": "welcome",
-            "title": "🤖 AI Assistant Ready!",
-            "message": "Your AI assistant is now active and monitoring your tasks. Click on me anytime for help!",
-            "actions": ["show_tasks", "add_task", "dismiss"],
-            "urgency": 0.3
-        }
-        
-        # Show welcome after a short delay
-        QTimer.singleShot(2000, lambda: self.show_notification(welcome_data))
-        
-        self.logger.info("AI Avatar Assistant started")
-    
-    def stop(self):
-        """Stop the application"""
-        if not self.is_running:
-            return
-        
-        self.is_running = False
-        
-        # Hide UI components
-        self.avatar.hide_avatar()
-        self.tooltip.hide_tooltip()
-        
-        # Stop scheduler
-        self.scheduler.stop()
-        
-        self.logger.info("AI Avatar Assistant stopped")
-    
-    def quit_application(self):
-        """Quit the entire application"""
-        self.stop()
-        self.app.quit()
-    
-    # Event Handlers
-    @pyqtSlot()
     def on_avatar_clicked(self):
-        """Handle avatar click - now opens chat interface"""
-        self.logger.info("Avatar clicked - opening chat interface")
+        """Handle avatar click - show chat interface"""
+        self.show_chat_interface()
         
-        # Open chat interface
+        if self.voice_system.enabled:
+            self.voice_system.speak_greeting()
+    
+    def show_chat_interface(self):
+        """Show the chat interface"""
         self.chat_interface.show_chat()
-        
-        # Voice greeting if enabled
-        if self.voice_system.enabled:
-            self.voice_system.speak_notification("Hello! I'm here to help. What would you like to know?", "friendly")
+        self.logger.info("Chat interface opened")
     
-    @pyqtSlot()
-    def on_avatar_hovered(self):
-        """Handle avatar hover"""
-        # Could show a brief status or do nothing
-        pass
-    
-    @pyqtSlot(str, dict)
-    def on_action_triggered(self, action_name, context):
-        """Handle action triggered from tooltip"""
-        self.logger.info(f"Action triggered: {action_name}")
-        
-        # Execute action through action system
-        result = self.action_system.execute_action(action_name, context)
-        
-        # Handle special actions that need UI updates
-        if result.get('action') == 'show_task_overview':
-            self.show_tasks_overview()
-        elif result.get('action') == 'hide_tooltip':
-            self.tooltip.hide_tooltip()
-        elif result.get('action') == 'show_task_dialog':
-            task_data = result.get('data')
-            if task_data:
-                self.show_full_task_dialog(task_data)
-        elif action_name == 'add_task':
-            self.show_add_task_dialog()
-        elif action_name == 'open_task':
-            # Get task data and show edit dialog
-            task_id = context.get('task_id')
-            if task_id:
-                tasks = self.db.get_tasks()
-                task = next((t for t in tasks if t['id'] == task_id), None)
-                if task:
-                    self.show_full_task_dialog(task)
-        elif action_name == 'start_focus_mode':
-            self.start_focus_mode(context)
-        elif action_name == 'open_analytics':
-            self.show_analytics_dashboard()
-        elif action_name == 'apply_suggestion':
-            # Handle AI suggestion application
-            self.tooltip.hide_tooltip()
-            self.tray_icon.showMessage("AI Assistant", "AI suggestion noted. Check analytics for details.", 
-                                     QSystemTrayIcon.Information, 2000)
-        elif action_name in ['show_tasks', 'get_suggestions']:
-            # Handle various tooltip actions
-            if action_name == 'show_tasks':
-                self.show_tasks_overview()
-            elif action_name == 'get_suggestions':
-                self.show_analytics_dashboard()
-        elif action_name == 'dismiss':
-            self.tooltip.hide_tooltip()
-        elif action_name == 'open_report':
-            self.open_report(context)
-        elif action_name == 'download_report':
-            self.download_report(context)
-        elif action_name == 'list_projects':
-            self.show_project_list()
-        
-        # Show result message if provided
-        if result.get('success') and result.get('message'):
-            # Update avatar mood based on action
-            if action_name == "mark_done":
-                self.avatar.set_mood("happy")
-                self.avatar.notify_normal()
-                # Voice feedback for task completion
-                if self.voice_system.enabled and context.get('task_id'):
-                    tasks = self.db.get_tasks()
-                    task = next((t for t in tasks if t['id'] == context['task_id']), None)
-                    if task:
-                        self.voice_system.speak_task_notification(task['title'], "completed")
-            elif action_name in ["snooze", "dismiss"]:
-                self.avatar.set_mood("sleeping")
-    
-    @pyqtSlot()
-    def on_tooltip_closed(self):
-        """Handle tooltip closed"""
-        self.current_notification = None
-        # Reset avatar mood to default
-        QTimer.singleShot(3000, lambda: self.avatar.set_mood("happy"))
-    
-    def on_event_triggered(self, event_data):
-        """Handle events from scheduler"""
-        self.logger.info(f"Event triggered: {event_data.get('type', 'unknown')}")
-        
-        # Show notification
-        self.show_notification(event_data)
-        
-        # Voice notification
-        if self.voice_system.enabled:
-            urgency_level = "urgent" if event_data.get('urgency', 0.5) >= 0.8 else "normal"
-            
-            # Determine notification type for voice
-            event_type = event_data.get('type', '')
-            title = event_data.get('title', '')
-            message = event_data.get('message', '')
-            
-            if 'deadline' in event_type or 'overdue' in event_type:
-                # Extract task title from message if possible
-                task_title = title.replace('⚠️', '').replace('🔥', '').strip()
-                notification_type = "deadline_soon" if "soon" in message else "deadline_now"
-                self.voice_system.speak_task_notification(task_title, notification_type)
-            elif event_type == "daily_summary":
-                self.voice_system.speak_notification(message, "normal")
-            elif event_type == "productivity_tip":
-                self.voice_system.speak_notification(f"Productivity tip: {message}", "friendly")
-            else:
-                # Generic notification
-                voice_text = f"{title}. {message}" if title and message else title or message
-                self.voice_system.speak_notification(voice_text, urgency_level)
-        
-        # Animate avatar based on urgency
-        urgency = event_data.get('urgency', 0.5)
-        if urgency >= 0.8:
-            self.avatar.notify_urgent()
-            self.avatar.set_mood("urgent")
-        else:
-            self.avatar.notify_normal()
-            self.avatar.set_mood("thinking")
-    
-    def show_notification(self, notification_data):
-        """Show a notification tooltip"""
-        self.current_notification = notification_data
-        
-        # Position tooltip near avatar
-        avatar_rect = self.avatar.geometry()
-        self.tooltip.position_near_avatar(avatar_rect)
-        
-        # Show tooltip
-        self.tooltip.show_notification(notification_data)
-    
-    # System Tray Actions
-    def on_tray_icon_activated(self, reason):
-        """Handle system tray icon activation"""
-        if reason == QSystemTrayIcon.DoubleClick:
-            self.toggle_avatar_visibility()
-        elif reason == QSystemTrayIcon.Trigger:
-            # Single click - could show status or menu
-            pass
-    
-    def toggle_avatar_visibility(self):
-        """Toggle avatar visibility"""
-        if self.avatar.isVisible():
-            self.avatar.hide_avatar()
-            self.tooltip.hide_tooltip()
-            self.toggle_action.setText("Show Avatar")
-        else:
-            self.avatar.show_avatar()
-            self.toggle_action.setText("Hide Avatar")
-    
-    def toggle_notifications(self):
-        """Toggle notification pause state"""
-        if self.scheduler.is_notifications_paused():
-            self.scheduler.resume_notifications()
-            self.pause_action.setText("Pause Notifications")
-            self.tray_icon.showMessage("AI Assistant", "Notifications resumed", 
-                                     QSystemTrayIcon.Information, 2000)
-        else:
-            self.scheduler.pause_notifications(60)  # Pause for 1 hour
-            self.pause_action.setText("Resume Notifications")
-            self.tray_icon.showMessage("AI Assistant", "Notifications paused for 1 hour", 
-                                     QSystemTrayIcon.Information, 2000)
-    
-    def show_add_task_dialog(self):
-        """Show add task dialog"""
-        try:
-            dialog = QuickTaskDialog(self)
-            dialog.task_saved.connect(self.on_task_created)
-            dialog.exec_()
-        except Exception as e:
-            self.logger.error(f"Failed to show add task dialog: {e}")
-            # Fallback to quick task creation
-            self.show_quick_task_input()
-    
-    def show_full_task_dialog(self, task_data=None):
-        """Show full task creation/editing dialog"""
-        try:
-            dialog = TaskDialog(task_data, self)
-            dialog.task_saved.connect(self.on_task_saved)
-            dialog.task_deleted.connect(self.on_task_deleted)
-            dialog.exec_()
-        except Exception as e:
-            self.logger.error(f"Failed to show task dialog: {e}")
-    
-    def show_quick_task_input(self):
-        """Fallback quick task input"""
-        sample_task_id = self.db.add_task(
-            title="Sample Task",
-            description="This is a sample task created from the system tray",
-            deadline=datetime.now() + timedelta(hours=2),
-            priority=3
+    def show_project_estimation(self):
+        """Show project estimation interface"""
+        # Use chat interface for project estimation
+        self.chat_interface.show_chat()
+        self.chat_interface.add_message(
+            "Hi! I can help you estimate your project. Please describe your project requirements, "
+            "technologies you'd like to use, and any specific deadlines or constraints.", 
+            False
         )
-        
-        self.tray_icon.showMessage("AI Assistant", "Sample task added!", 
-                                 QSystemTrayIcon.Information, 2000)
-        
-        self.logger.info(f"Added sample task with ID: {sample_task_id}")
-    
-    def on_task_created(self, task_data):
-        """Handle new task creation"""
-        try:
-            task_id = self.db.add_task(
-                title=task_data['title'],
-                description=task_data.get('description', ''),
-                deadline=task_data.get('deadline'),
-                priority=task_data.get('priority', 3),
-                metadata=task_data.get('metadata', {})
-            )
-            
-            self.tray_icon.showMessage("AI Assistant", 
-                                     f"Task '{task_data['title']}' created!", 
-                                     QSystemTrayIcon.Information, 2000)
-            
-            self.logger.info(f"Created new task: {task_data['title']} (ID: {task_id})")
-            
-            # Schedule reminders if deadline is set
-            if task_data.get('deadline'):
-                self.scheduler.schedule_task_reminders(task_id, task_data['deadline'])
-                
-        except Exception as e:
-            self.logger.error(f"Failed to create task: {e}")
-            QMessageBox.warning(None, "Error", f"Failed to create task: {e}")
-    
-    def on_task_saved(self, task_data):
-        """Handle task save (create or update)"""
-        try:
-            if 'id' in task_data:
-                # Update existing task
-                self.db.update_task_status(task_data['id'], task_data['status'])
-                # Note: A full implementation would update all fields
-                self.logger.info(f"Updated task: {task_data['title']}")
-                message = f"Task '{task_data['title']}' updated!"
-            else:
-                # Create new task
-                self.on_task_created(task_data)
-                return
-            
-            self.tray_icon.showMessage("AI Assistant", message, 
-                                     QSystemTrayIcon.Information, 2000)
-                                     
-        except Exception as e:
-            self.logger.error(f"Failed to save task: {e}")
-            QMessageBox.warning(None, "Error", f"Failed to save task: {e}")
-    
-    def on_task_deleted(self, task_id):
-        """Handle task deletion"""
-        try:
-            # Mark as cancelled instead of deleting
-            self.db.update_task_status(task_id, "cancelled")
-            
-            self.tray_icon.showMessage("AI Assistant", 
-                                     "Task deleted successfully!", 
-                                     QSystemTrayIcon.Information, 2000)
-            
-            self.logger.info(f"Deleted task ID: {task_id}")
-            
-        except Exception as e:
-            self.logger.error(f"Failed to delete task: {e}")
-            QMessageBox.warning(None, "Error", f"Failed to delete task: {e}")
-    
-    def start_focus_mode(self, context=None):
-        """Start focus mode session"""
-        # Get task info from context if available
-        task_title = "Focus Session"
-        duration = 25  # Default Pomodoro duration
-        
-        if context and 'task_id' in context:
-            task_id = context['task_id']
-            tasks = self.db.get_tasks()
-            task = next((t for t in tasks if t['id'] == task_id), None)
-            if task:
-                task_title = f"Focus: {task['title']}"
-        elif context and 'metadata' in context:
-            metadata = context['metadata']
-            if isinstance(metadata, dict):
-                task_title = metadata.get('task_title', task_title)
-                duration = metadata.get('duration', duration)
-        
-        # Start focus session
-        if self.focus_manager.start_focus_session(task_title, duration):
-            self.avatar.set_mood("focused")
-            self.stop_focus_action.setEnabled(True)
-            self.tray_icon.showMessage(
-                "AI Assistant", 
-                f"Focus session started: {task_title}",
-                QSystemTrayIcon.Information, 2000
-            )
-            
-            # Voice notification for focus start
-            if self.voice_system.enabled:
-                self.voice_system.speak_task_notification(task_title, "focus_start")
-            
-            self.logger.info(f"Started focus session: {task_title}")
-        else:
-                         self.tray_icon.showMessage(
-                 "AI Assistant", 
-                 "A focus session is already active",
-                 QSystemTrayIcon.Warning, 2000
-             )
-    
-    def show_custom_focus_dialog(self):
-        """Show custom focus duration dialog"""
-        from PyQt5.QtWidgets import QInputDialog
-        
-        duration, ok = QInputDialog.getInt(
-            None, 
-            "Custom Focus Session", 
-            "Enter duration in minutes:", 
-            25, 1, 120
-        )
-        
-        if ok:
-            task_title, ok = QInputDialog.getText(
-                None,
-                "Focus Session",
-                "Task name (optional):",
-                text="Focus Session"
-            )
-            
-            if ok:
-                context = {
-                    'metadata': {
-                        'task_title': task_title,
-                        'duration': duration
-                    }
-                }
-                self.start_focus_mode(context)
-    
-    def stop_focus_session(self):
-        """Stop the current focus session"""
-        self.focus_manager.stop_current_session()
-        self.stop_focus_action.setEnabled(False)
-        self.avatar.set_mood("happy")
-    
-    def show_statistics(self):
-        """Show productivity statistics"""
-        stats = self.focus_manager.get_stats()
-        pending_tasks = len(self.db.get_tasks(status="pending"))
-        completed_today = len([t for t in self.db.get_tasks(status="completed") 
-                              if t.get('updated_at') and 
-                              datetime.fromisoformat(t['updated_at']).date() == datetime.now().date()])
-        
-        stats_data = {
-            "type": "statistics",
-            "title": "📊 Productivity Statistics",
-            "message": f"Today's Progress:\n" +
-                      f"• Focus sessions: {stats['sessions_today']}\n" +
-                      f"• Tasks completed: {completed_today}\n" +
-                      f"• Pending tasks: {pending_tasks}\n" +
-                      f"• Currently active: {'Yes' if stats['current_active'] else 'No'}",
-            "actions": ["start_focus_mode", "show_tasks", "dismiss"],
-            "urgency": 0.3,
-            "metadata": stats
-        }
-        
-        self.show_notification(stats_data)
+        self.logger.info("Project estimation interface opened")
     
     def show_analytics_dashboard(self):
-        """Show the analytics dashboard with live insights"""
-        try:
-            # Get fresh analytics data
-            analytics_data = self.analytics_engine.get_visual_analytics_data()
-            
-            # Update dashboard
-            self.analytics_dashboard.update_dashboard(analytics_data)
-            
-            # Show dashboard
-            self.analytics_dashboard.show_dashboard()
-            
-            # Voice announcement if enabled
-            if self.voice_system.enabled:
-                self.voice_system.speak_notification("Analytics dashboard opened. Analyzing your productivity patterns.", "normal")
-            
-        except Exception as e:
-            self.logger.error(f"Error showing analytics dashboard: {e}")
-            self.tray_icon.showMessage(
-                "AI Assistant", 
-                f"Analytics dashboard error: {e}",
-                QSystemTrayIcon.Warning, 3000
+        """Show analytics dashboard"""
+        # Fetch and update analytics data
+        analytics_data = self.analytics_engine.get_visual_analytics_data()
+        self.analytics_dashboard.update_dashboard(analytics_data)
+        self.analytics_dashboard.show_dashboard()
+        
+        if self.voice_system.enabled:
+            self.voice_system.speak_notification(
+                "Analytics dashboard opened. Your productivity insights are ready for review.",
+                "normal"
             )
+        
+        self.logger.info("Analytics dashboard opened")
+    
+    def show_settings_dashboard(self):
+        """Show settings dashboard"""
+        self.settings_dashboard.show()
+        self.logger.info("Settings dashboard opened")
+    
+    def show_widget_integration(self):
+        """Show widget integration dialog"""
+        self.widget_integration_dialog.show()
+        self.logger.info("Widget integration dialog opened")
+    
+    def start_focus_mode(self):
+        """Start focus mode"""
+        self.focus_mode.show()
+        
+        if self.voice_system.enabled:
+            self.voice_system.speak_notification(
+                "Focus mode activated. Minimizing distractions for optimal productivity.",
+                "calm"
+            )
+        
+        self.logger.info("Focus mode started")
+    
+    def start_widget_api(self):
+        """Start the widget API server"""
+        try:
+            if self.widget_integration_manager.initialize_widget_api():
+                self.tray_icon.showMessage(
+                    "Widget API Started",
+                    "Widget API server is now running on port 5555",
+                    QSystemTrayIcon.Information,
+                    3000
+                )
+                self.logger.info("Widget API server started from tray")
+            else:
+                self.tray_icon.showMessage(
+                    "Widget API Error",
+                    "Failed to start widget API server",
+                    QSystemTrayIcon.Critical,
+                    3000
+                )
+        except Exception as e:
+            self.logger.error(f"Error starting widget API: {e}")
+    
+    def stop_widget_api(self):
+        """Stop the widget API server"""
+        try:
+            self.widget_integration_manager.shutdown()
+            self.tray_icon.showMessage(
+                "Widget API Stopped",
+                "Widget API server has been stopped",
+                QSystemTrayIcon.Information,
+                3000
+            )
+            self.logger.info("Widget API server stopped from tray")
+        except Exception as e:
+            self.logger.error(f"Error stopping widget API: {e}")
+    
+    def show_system_status(self):
+        """Show comprehensive system status"""
+        # Get status from all components
+        data_status = self.data_source_manager.get_data_source_status()
+        widget_status = self.widget_integration_manager.get_widget_status() if self.widget_integration_manager.widget_server else {"server_running": False}
+        
+        status_message = f"""
+AI Avatar Assistant - System Status
+
+🗄️ Data Sources: {data_status['active_sources']}/{data_status['total_sources']} active
+📊 Analytics Engine: Running
+🎙️ Voice System: {'Enabled' if self.voice_system.enabled else 'Disabled'}
+🔗 Widget API: {'Running on port ' + str(widget_status.get('port', 'N/A')) if widget_status['server_running'] else 'Stopped'}
+📱 Active Widgets: {widget_status.get('active_widgets', 0)}
+🔑 API Keys: {widget_status.get('active_api_keys', 0)}
+
+Last Sync: {data_status.get('last_sync', 'Never')}
+        """
+        
+        QMessageBox.information(self, "System Status", status_message.strip())
+    
+    def on_event_triggered(self, event_type: str, event_data: Dict):
+        """Handle triggered events"""
+        self.logger.info(f"Event triggered: {event_type}")
+        
+        # Voice notifications for events
+        if self.voice_system.enabled:
+            if event_type == "task_reminder":
+                self.voice_system.speak_task_notification(event_data.get("task_name", "Task"))
+            elif event_type == "deadline_approaching":
+                self.voice_system.speak_notification(
+                    f"Deadline approaching for {event_data.get('task_name', 'task')}",
+                    "urgent"
+                )
+            elif event_type == "productivity_alert":
+                self.voice_system.speak_notification(
+                    "Your productivity seems lower than usual. Consider taking a break or switching tasks.",
+                    "friendly"
+                )
+        
+        # Show tooltip for important events
+        if event_type in ["deadline_approaching", "task_overdue"]:
+            self.tooltip.show_tooltip(
+                self.avatar,
+                f"⚠️ {event_data.get('message', 'Important notification')}",
+                "warning"
+            )
+    
+    def on_action_triggered(self, action: str, context: Dict = None):
+        """Handle action execution"""
+        self.logger.info(f"Action triggered: {action}")
+        
+        if action == "mark_done":
+            if self.voice_system.enabled:
+                self.voice_system.speak_notification("Task completed! Great work!", "friendly")
+        
+        elif action == "open_analytics":
+            self.show_analytics_dashboard()
+        
+        elif action == "apply_suggestion":
+            suggestion = context.get("suggestion", "")
+            self.tray_icon.showMessage(
+                "Suggestion Applied",
+                f"Applied suggestion: {suggestion}",
+                QSystemTrayIcon.Information,
+                3000
+            )
+        
+        elif action == "open_report":
+            self.open_report(context)
+        
+        elif action == "download_report":
+            self.download_report(context)
+        
+        elif action == "list_projects":
+            self.show_project_list()
+        
+        elif action == "estimate_project":
+            self.show_project_estimation()
+        
+        elif action == "show_team_recommendations":
+            self.show_team_recommendations(context)
+    
+    def on_widget_integration_created(self, integration_data: Dict):
+        """Handle new widget integration creation"""
+        self.logger.info(f"New widget integration created: {integration_data['widget_id']}")
+        
+        self.tray_icon.showMessage(
+            "Widget Integration Created",
+            f"New widget created with ID: {integration_data['widget_id'][:12]}...",
+            QSystemTrayIcon.Information,
+            5000
+        )
+        
+        if self.voice_system.enabled:
+            self.voice_system.speak_notification(
+                "New widget integration created successfully. Your AI assistant is now available for embedding.",
+                "friendly"
+            )
+    
+    def on_settings_changed(self, settings: Dict):
+        """Handle settings changes"""
+        self.logger.info("Settings changed")
+        
+        # Apply relevant settings
+        if "voice" in settings:
+            voice_settings = settings["voice"]
+            if "enabled" in voice_settings:
+                self.voice_system.set_enabled(voice_settings["enabled"])
+        
+        # Update data source manager settings
+        if "data" in settings:
+            data_settings = settings["data"]
+            if "auto_sync_interval" in data_settings:
+                self.data_source_manager.watch_interval = data_settings["auto_sync_interval"] * 60
     
     def update_analytics_periodically(self):
-        """Periodically update analytics and provide insights"""
+        """Periodic analytics update and notification"""
         try:
-            # Get current situation analysis
-            analysis = self.analytics_engine.analyze_current_situation()
+            # Run analytics analysis
+            situation = self.analytics_engine.analyze_current_situation()
             
             # Check for critical alerts
-            alerts = analysis.get("alerts", [])
-            critical_alerts = [alert for alert in alerts if alert.get("severity") == "critical"]
-            
-            if critical_alerts:
-                # Show critical alert notification
-                for alert in critical_alerts[:2]:  # Max 2 critical alerts
-                    alert_data = {
-                        "type": "critical_alert",
-                        "title": f"🚨 {alert.get('title', 'Critical Alert')}",
-                        "message": alert.get("message", ""),
-                        "actions": ["open_analytics", "dismiss"],
-                        "urgency": 1.0
-                    }
-                    self.show_notification(alert_data)
+            if situation.get("alerts"):
+                critical_alerts = [alert for alert in situation["alerts"] if alert.get("priority") == "high"]
+                
+                for alert in critical_alerts:
+                    self.tray_icon.showMessage(
+                        "Analytics Alert",
+                        alert.get("message", "Important productivity alert"),
+                        QSystemTrayIcon.Warning,
+                        5000
+                    )
                     
-                    # Voice alert if enabled
                     if self.voice_system.enabled:
-                        self.voice_system.speak_notification(
-                            f"Critical alert: {alert.get('message', '')}", 
-                            "urgent", 
-                            interrupt=True
-                        )
+                        self.voice_system.speak_notification(alert.get("message", "Alert"), "urgent")
             
             # Check for high-priority recommendations
-            recommendations = analysis.get("recommendations", [])
-            high_priority_recs = [rec for rec in recommendations if rec.get("priority") in ["urgent", "high"]]
-            
-            if high_priority_recs and len(critical_alerts) == 0:  # Don't spam if there are critical alerts
-                # Show one high-priority recommendation
-                rec = high_priority_recs[0]
-                rec_data = {
-                    "type": "ai_recommendation",
-                    "title": f"💡 {rec.get('title', 'AI Suggestion')}",
-                    "message": rec.get("description", ""),
-                    "actions": ["open_analytics", "apply_suggestion", "dismiss"],
-                    "urgency": 0.7
-                }
+            if situation.get("recommendations"):
+                high_priority_recs = [rec for rec in situation["recommendations"] if rec.get("priority") == "high"]
                 
-                # Only show recommendation every 30 minutes to avoid spam
-                current_time = datetime.now()
-                if not hasattr(self, '_last_recommendation_time') or \
-                   (current_time - self._last_recommendation_time).seconds > 1800:
-                    
-                    self.show_notification(rec_data)
-                    self._last_recommendation_time = current_time
-                    
-                    # Voice recommendation if enabled
-                    if self.voice_system.enabled:
-                        self.voice_system.speak_notification(
-                            f"AI recommendation: {rec.get('description', '')}", 
-                            "friendly"
-                        )
-        
+                for rec in high_priority_recs[:1]:  # Show only the top recommendation
+                    self.tray_icon.showMessage(
+                        "AI Recommendation",
+                        rec.get("action", "I have a productivity suggestion for you"),
+                        QSystemTrayIcon.Information,
+                        4000
+                    )
+            
+            self.logger.info("Analytics updated successfully")
+            
         except Exception as e:
-            self.logger.error(f"Error in analytics update: {e}")
+            self.logger.error(f"Error updating analytics: {e}")
+    
+    def update_system_status(self):
+        """Update system status display"""
+        try:
+            # Update status label
+            active_sources = self.data_source_manager.get_data_source_status()["active_sources"]
+            widget_running = bool(self.widget_integration_manager.widget_server and 
+                                self.widget_integration_manager.widget_server.is_running)
+            
+            status_text = f"🟢 Active Sources: {active_sources} | Widget API: {'🟢' if widget_running else '🔴'}"
+            self.status_label.setText(status_text)
+            
+        except Exception as e:
+            self.logger.error(f"Error updating system status: {e}")
     
     def refresh_analytics_data(self):
-        """Refresh analytics data for the dashboard"""
+        """Refresh analytics data for dashboard"""
         try:
             analytics_data = self.analytics_engine.get_visual_analytics_data()
             self.analytics_dashboard.update_dashboard(analytics_data)
+            self.logger.info("Analytics data refreshed")
         except Exception as e:
-            self.logger.error(f"Error refreshing analytics data: {e}")
+            self.logger.error(f"Error refreshing analytics: {e}")
     
     def open_report(self, context: Dict):
-        """Open a generated report"""
-        report_id = context.get("report_id")
-        url = context.get("url")
-        
-        if not report_id:
-            return
-        
+        """Open generated report in browser"""
         try:
-            # Get the report
-            report = self.report_generator.get_report(report_id)
-            if report and report.html_path and os.path.exists(report.html_path):
-                # Open the HTML file in the default browser
+            report_id = context.get("report_id")
+            if report_id:
                 import webbrowser
-                webbrowser.open(f"file://{os.path.abspath(report.html_path)}")
+                report_url = f"file://{os.path.abspath('data/reports')}/{report_id}.html"
+                webbrowser.open(report_url)
                 
-                # Voice announcement
                 if self.voice_system.enabled:
-                    self.voice_system.speak_notification(
-                        "Opening your report. Click the play button in the report to hear my voice explanation.",
-                        "normal"
-                    )
+                    self.voice_system.speak_notification("Report opened in your browser", "normal")
                 
-                self.logger.info(f"Opened report {report_id}")
-            else:
-                self.tray_icon.showMessage(
-                    "AI Assistant", 
-                    "Report not found or expired.",
-                    QSystemTrayIcon.Warning, 3000
-                )
+                self.logger.info(f"Opened report: {report_id}")
         except Exception as e:
             self.logger.error(f"Error opening report: {e}")
-            self.tray_icon.showMessage(
-                "AI Assistant", 
-                f"Error opening report: {e}",
-                QSystemTrayIcon.Critical, 3000
-            )
     
     def download_report(self, context: Dict):
-        """Download a report as PDF"""
-        report_id = context.get("report_id")
-        
-        if not report_id:
-            return
-        
+        """Download report as PDF"""
         try:
-            report = self.report_generator.get_report(report_id)
-            if report and report.pdf_path and os.path.exists(report.pdf_path):
-                # Open file dialog to save PDF
-                from PyQt5.QtWidgets import QFileDialog
-                
-                save_path, _ = QFileDialog.getSaveFileName(
-                    None,
-                    "Save Report",
-                    f"{report.title.replace(':', '-')}.pdf",
-                    "PDF Files (*.pdf)"
+            report_id = context.get("report_id")
+            if report_id:
+                file_path, _ = QFileDialog.getSaveFileName(
+                    self, "Save Report", f"report_{report_id}.pdf", "PDF Files (*.pdf)"
                 )
                 
-                if save_path:
+                if file_path:
+                    # Copy the generated PDF to selected location
                     import shutil
-                    shutil.copy2(report.pdf_path, save_path)
-                    
-                    self.tray_icon.showMessage(
-                        "AI Assistant", 
-                        f"Report saved to {save_path}",
-                        QSystemTrayIcon.Information, 3000
-                    )
-                    
-                    if self.voice_system.enabled:
-                        self.voice_system.speak_notification("Report downloaded successfully.", "normal")
-            else:
-                self.tray_icon.showMessage(
-                    "AI Assistant", 
-                    "PDF version not available for this report.",
-                    QSystemTrayIcon.Warning, 3000
-                )
+                    source_path = f"data/reports/{report_id}.pdf"
+                    if os.path.exists(source_path):
+                        shutil.copy(source_path, file_path)
+                        
+                        QMessageBox.information(self, "Success", f"Report saved to {file_path}")
+                        self.logger.info(f"Report downloaded: {file_path}")
         except Exception as e:
             self.logger.error(f"Error downloading report: {e}")
     
     def show_project_list(self):
-        """Show list of available projects"""
+        """Show list of projects"""
         try:
-            # Get projects from tasks metadata
-            projects = set()
-            tasks = self.db.get_tasks()
-            
-            for task in tasks:
-                metadata = task.get('metadata', '{}')
-                if isinstance(metadata, str):
-                    try:
-                        metadata = json.loads(metadata)
-                    except:
-                        metadata = {}
-                
-                project = metadata.get('project') or metadata.get('category')
-                if project:
-                    projects.add(project)
+            projects = self.data_source_manager.get_all_projects()
             
             if projects:
-                project_list = "\n".join([f"• {project}" for project in sorted(projects)])
-                projects_data = {
-                    "type": "project_list",
-                    "title": "📋 Available Projects",
-                    "message": f"Here are your projects:\n\n{project_list}\n\nAsk me to 'Generate report for [project name]'",
-                    "actions": ["dismiss"],
-                    "urgency": 0.3
-                }
+                project_list = "\n".join([
+                    f"• {proj.get('name', proj.get('project_name', 'Unnamed Project'))}"
+                    for proj in projects[:10]  # Show top 10
+                ])
+                
+                if len(projects) > 10:
+                    project_list += f"\n... and {len(projects) - 10} more projects"
+                
+                self.tooltip.show_tooltip(
+                    self.avatar,
+                    f"📋 Current Projects ({len(projects)} total):\n{project_list}",
+                    "info"
+                )
             else:
-                projects_data = {
-                    "type": "no_projects",
-                    "title": "📋 No Projects Found",
-                    "message": "I couldn't find any projects in your tasks. Try adding project names to your task metadata, or ask for a general productivity report instead.",
-                    "actions": ["add_task", "dismiss"],
-                    "urgency": 0.3
-                }
+                self.tooltip.show_tooltip(
+                    self.avatar,
+                    "📋 No projects found. Connect your data sources to see projects.",
+                    "info"
+                )
             
-            self.show_notification(projects_data)
-            
+            self.logger.info("Project list displayed")
         except Exception as e:
             self.logger.error(f"Error showing project list: {e}")
     
+    def show_team_recommendations(self, context: Dict):
+        """Show team member recommendations"""
+        try:
+            skills = context.get("skills", [])
+            team_members = self.data_source_manager.get_team_members()
+            
+            if team_members:
+                # Simple skill matching
+                recommendations = []
+                for member in team_members:
+                    member_skills = member.get("skills", [])
+                    if isinstance(member_skills, str):
+                        member_skills = [member_skills]
+                    
+                    # Check for skill matches
+                    matches = sum(1 for skill in skills if 
+                                any(skill.lower() in ms.lower() for ms in member_skills))
+                    
+                    if matches > 0:
+                        recommendations.append({
+                            "name": member.get("name", "Unknown"),
+                            "matches": matches,
+                            "skills": member_skills
+                        })
+                
+                # Sort by matches
+                recommendations.sort(key=lambda x: x["matches"], reverse=True)
+                
+                if recommendations:
+                    rec_text = "\n".join([
+                        f"• {rec['name']} ({rec['matches']} matches)"
+                        for rec in recommendations[:5]
+                    ])
+                    
+                    self.tooltip.show_tooltip(
+                        self.avatar,
+                        f"👥 Recommended Team Members:\n{rec_text}",
+                        "info"
+                    )
+                else:
+                    self.tooltip.show_tooltip(
+                        self.avatar,
+                        "👥 No team members found with matching skills.",
+                        "warning"
+                    )
+            else:
+                self.tooltip.show_tooltip(
+                    self.avatar,
+                    "👥 No team member data available. Please configure your data sources.",
+                    "warning"
+                )
+            
+            self.logger.info("Team recommendations displayed")
+        except Exception as e:
+            self.logger.error(f"Error showing team recommendations: {e}")
+    
     def toggle_voice_notifications(self):
-        """Toggle voice notifications on/off"""
-        new_state = self.voice_enabled_action.isChecked()
-        self.voice_system.set_enabled(new_state)
-        
-        status_message = "Voice notifications enabled" if new_state else "Voice notifications disabled"
-        self.tray_icon.showMessage("AI Assistant", status_message, 
-                                 QSystemTrayIcon.Information, 2000)
-        
-        # Test voice if enabling
-        if new_state and self.voice_system.is_initialized:
-            self.voice_system.speak_notification("Voice notifications are now enabled.")
+        """Toggle voice notification system"""
+        try:
+            current_state = self.voice_system.enabled
+            self.voice_system.set_enabled(not current_state)
+            
+            state_text = "enabled" if not current_state else "disabled"
+            self.tray_icon.showMessage(
+                "Voice Notifications",
+                f"Voice notifications {state_text}",
+                QSystemTrayIcon.Information,
+                2000
+            )
+            
+            if not current_state:  # If we just enabled voice
+                self.voice_system.speak_notification("Voice notifications enabled", "friendly")
+            
+            self.logger.info(f"Voice notifications {state_text}")
+        except Exception as e:
+            self.logger.error(f"Error toggling voice notifications: {e}")
     
     def test_voice_system(self):
-        """Test the voice notification system"""
-        if not self.voice_system.is_initialized:
-            self.tray_icon.showMessage("AI Assistant", 
-                                     "Voice system not available. Please check configuration.",
-                                     QSystemTrayIcon.Warning, 3000)
-            return
-        
-        test_message = "This is a test of the voice notification system. If you can hear this, voice notifications are working correctly."
-        success = self.voice_system.test_voice(test_message)
-        
-        if not success:
-            self.tray_icon.showMessage("AI Assistant", 
-                                     "Voice test failed. Please check your audio settings.",
-                                     QSystemTrayIcon.Warning, 3000)
+        """Test voice notification system"""
+        try:
+            if self.voice_system.enabled:
+                self.voice_system.test_voice()
+                self.tray_icon.showMessage(
+                    "Voice Test",
+                    "Voice test completed",
+                    QSystemTrayIcon.Information,
+                    2000
+                )
+            else:
+                self.tray_icon.showMessage(
+                    "Voice Test",
+                    "Voice notifications are disabled",
+                    QSystemTrayIcon.Warning,
+                    2000
+                )
+            
+            self.logger.info("Voice system tested")
+        except Exception as e:
+            self.logger.error(f"Error testing voice system: {e}")
     
     def show_voice_settings(self):
         """Show voice settings dialog"""
-        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QCheckBox, QPushButton, QComboBox
-        
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Voice Settings")
-        dialog.setModal(True)
-        dialog.resize(400, 300)
-        
-        layout = QVBoxLayout()
-        
-        # Voice enabled checkbox
-        enabled_cb = QCheckBox("Enable Voice Notifications")
-        enabled_cb.setChecked(self.voice_system.enabled)
-        layout.addWidget(enabled_cb)
-        
-        # Voice rate slider
-        rate_layout = QHBoxLayout()
-        rate_layout.addWidget(QLabel("Speech Rate:"))
-        rate_slider = QSlider(Qt.Horizontal)
-        rate_slider.setRange(50, 400)
-        rate_slider.setValue(self.voice_system.voice_rate)
-        rate_label = QLabel(f"{self.voice_system.voice_rate} WPM")
-        rate_slider.valueChanged.connect(lambda v: rate_label.setText(f"{v} WPM"))
-        rate_layout.addWidget(rate_slider)
-        rate_layout.addWidget(rate_label)
-        layout.addLayout(rate_layout)
-        
-        # Voice volume slider
-        volume_layout = QHBoxLayout()
-        volume_layout.addWidget(QLabel("Volume:"))
-        volume_slider = QSlider(Qt.Horizontal)
-        volume_slider.setRange(0, 100)
-        volume_slider.setValue(int(self.voice_system.voice_volume * 100))
-        volume_label = QLabel(f"{int(self.voice_system.voice_volume * 100)}%")
-        volume_slider.valueChanged.connect(lambda v: volume_label.setText(f"{v}%"))
-        volume_layout.addWidget(volume_slider)
-        volume_layout.addWidget(volume_label)
-        layout.addLayout(volume_layout)
-        
-        # Voice gender selection
-        gender_layout = QHBoxLayout()
-        gender_layout.addWidget(QLabel("Voice Gender:"))
-        gender_combo = QComboBox()
-        gender_combo.addItems(["Female", "Male"])
-        gender_combo.setCurrentText(self.voice_system.voice_gender.title())
-        gender_layout.addWidget(gender_combo)
-        layout.addLayout(gender_layout)
-        
-        # Test button
-        test_btn = QPushButton("Test Voice")
-        test_btn.clicked.connect(lambda: self.voice_system.test_voice("This is a test of your voice settings."))
-        layout.addWidget(test_btn)
-        
-        # Buttons
-        button_layout = QHBoxLayout()
-        cancel_btn = QPushButton("Cancel")
-        cancel_btn.clicked.connect(dialog.reject)
-        button_layout.addWidget(cancel_btn)
-        
-        save_btn = QPushButton("Save")
-        def save_settings():
-            self.voice_system.set_enabled(enabled_cb.isChecked())
-            self.voice_system.set_voice_rate(rate_slider.value())
-            self.voice_system.set_voice_volume(volume_slider.value() / 100.0)
-            self.voice_system.voice_gender = gender_combo.currentText().lower()
-            self.voice_system.save_config()
-            self.voice_enabled_action.setChecked(enabled_cb.isChecked())
-            dialog.accept()
-        
-        save_btn.clicked.connect(save_settings)
-        button_layout.addWidget(save_btn)
-        layout.addLayout(button_layout)
-        
-        dialog.setLayout(layout)
-        dialog.exec_()
-    
-    def show_tasks_overview(self):
-        """Show tasks overview"""
-        tasks = self.db.get_tasks(status="pending")
-        
-        overview_data = {
-            "type": "task_overview",
-            "title": f"📋 Tasks Overview ({len(tasks)} pending)",
-            "message": "Here are your current tasks:\n" + 
-                      "\n".join([f"• {task['title']}" for task in tasks[:5]]),
-            "actions": ["prioritize_tasks", "start_focus_mode", "dismiss"],
-            "urgency": 0.4,
-            "metadata": {"tasks": tasks}
-        }
-        
-        self.show_notification(overview_data)
-    
-    def show_task_details(self, task_data):
-        """Show detailed task information"""
-        if not task_data:
-            return
-        
-        details_data = {
-            "type": "task_details",
-            "title": f"📝 {task_data.get('title', 'Task Details')}",
-            "message": task_data.get('description', 'No description available'),
-            "actions": ["mark_done", "reschedule", "edit_task", "dismiss"],
-            "urgency": 0.6,
-            "task_id": task_data.get('id'),
-            "metadata": task_data
-        }
-        
-        self.show_notification(details_data)
-    
-    def show_settings(self):
-        """Show settings dialog"""
-        # For now, just show a simple message
-        # In a full implementation, this would open a settings dialog
-        
-        settings_data = {
-            "type": "settings",
-            "title": "⚙️ Settings",
-            "message": "Settings dialog would open here. For now, you can modify the config.json file.",
-            "actions": ["open_config", "restart_app", "dismiss"],
-            "urgency": 0.3
-        }
-        
-        self.show_notification(settings_data)
-    
-    def update_status(self):
-        """Update application status"""
-        # This could update the tray icon, check for system changes, etc.
-        status = self.scheduler.get_status()
-        self.logger.debug(f"Scheduler status: {status}")
-        
-        # Update tray icon tooltip with status
-        pending_events = len(self.scheduler.get_next_events())
-        pending_tasks = len(self.db.get_tasks(status="pending"))
-        
-        tooltip_text = f"AI Assistant\nPending tasks: {pending_tasks}\nUpcoming events: {pending_events}"
-        self.tray_icon.setToolTip(tooltip_text)
-    
-    def run(self):
-        """Run the application"""
         try:
-            # Start the assistant
-            self.start()
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Voice Settings")
+            dialog.setFixedSize(300, 200)
             
-            # Show system tray message
-            self.tray_icon.showMessage("AI Assistant", "AI Avatar Assistant is now running!", 
-                                     QSystemTrayIcon.Information, 3000)
+            layout = QVBoxLayout()
             
-            # Run the Qt event loop
-            return self.app.exec_()
+            # Enable voice checkbox
+            enable_checkbox = QCheckBox("Enable Voice Notifications")
+            enable_checkbox.setChecked(self.voice_system.enabled)
+            layout.addWidget(enable_checkbox)
+            
+            # Voice rate slider
+            rate_label = QLabel(f"Voice Rate: {self.voice_system.voice_rate}")
+            layout.addWidget(rate_label)
+            
+            rate_slider = QSlider(Qt.Horizontal)
+            rate_slider.setRange(100, 300)
+            rate_slider.setValue(self.voice_system.voice_rate)
+            rate_slider.valueChanged.connect(lambda v: rate_label.setText(f"Voice Rate: {v}"))
+            layout.addWidget(rate_slider)
+            
+            # Voice volume slider
+            volume_label = QLabel(f"Voice Volume: {int(self.voice_system.voice_volume * 100)}%")
+            layout.addWidget(volume_label)
+            
+            volume_slider = QSlider(Qt.Horizontal)
+            volume_slider.setRange(0, 100)
+            volume_slider.setValue(int(self.voice_system.voice_volume * 100))
+            volume_slider.valueChanged.connect(lambda v: volume_label.setText(f"Voice Volume: {v}%"))
+            layout.addWidget(volume_slider)
+            
+            # Buttons
+            button_layout = QHBoxLayout()
+            
+            test_btn = QPushButton("Test")
+            test_btn.clicked.connect(lambda: self.voice_system.test_voice())
+            button_layout.addWidget(test_btn)
+            
+            save_btn = QPushButton("Save")
+            def save_settings():
+                self.voice_system.set_enabled(enable_checkbox.isChecked())
+                self.voice_system.set_voice_rate(rate_slider.value())
+                self.voice_system.set_voice_volume(volume_slider.value() / 100)
+                self.voice_system.save_config()
+                dialog.accept()
+            
+            save_btn.clicked.connect(save_settings)
+            button_layout.addWidget(save_btn)
+            
+            cancel_btn = QPushButton("Cancel")
+            cancel_btn.clicked.connect(dialog.reject)
+            button_layout.addWidget(cancel_btn)
+            
+            layout.addLayout(button_layout)
+            dialog.setLayout(layout)
+            dialog.exec_()
             
         except Exception as e:
-            self.logger.error(f"Application error: {e}")
-            return 1
-        finally:
-            self.stop()
+            self.logger.error(f"Error showing voice settings: {e}")
+    
+    def on_tray_icon_activated(self, reason):
+        """Handle tray icon activation"""
+        if reason == QSystemTrayIcon.DoubleClick:
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show()
+                self.raise_()
+                self.activateWindow()
+    
+    def closeEvent(self, event):
+        """Handle close event - minimize to tray instead of quitting"""
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray_icon.showMessage(
+                "AI Avatar Assistant",
+                "Application minimized to tray. Right-click the tray icon for options.",
+                QSystemTrayIcon.Information,
+                2000
+            )
+            self.hide()
+            event.ignore()
+        else:
+            event.accept()
+    
+    def quit_application(self):
+        """Properly quit the application"""
+        self.logger.info("Shutting down AI Avatar Assistant...")
+        
+        try:
+            # Stop background services
+            if self.scheduler:
+                self.scheduler.stop()
+            
+            if self.voice_system:
+                self.voice_system.shutdown()
+            
+            if self.widget_integration_manager:
+                self.widget_integration_manager.shutdown()
+            
+            # Close database connections
+            if self.db:
+                self.db.close()
+            
+            self.logger.info("✅ AI Avatar Assistant shutdown complete")
+            
+        except Exception as e:
+            self.logger.error(f"Error during shutdown: {e}")
+        
+        QApplication.quit()
 
 def main():
-    """Main entry point"""
-    # Ensure data directory exists
-    os.makedirs("data", exist_ok=True)
+    """Main application entry point"""
+    # Create QApplication
+    app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)  # Keep running in system tray
     
+    # Set application properties
+    app.setApplicationName("AI Avatar Assistant")
+    app.setApplicationVersion("1.0.0")
+    app.setApplicationDisplayName("AI Avatar Assistant - Universal Orchestration")
+    
+    # Create and show main window
+    assistant = AIAvatarAssistant()
+    assistant.show()
+    
+    # Start application
     try:
-        assistant = AIAvatarAssistant()
-        return assistant.run()
-    except Exception as e:
-        print(f"Failed to start AI Avatar Assistant: {e}")
-        return 1
+        sys.exit(app.exec_())
+    except KeyboardInterrupt:
+        assistant.quit_application()
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
