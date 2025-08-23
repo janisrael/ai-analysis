@@ -1,0 +1,23 @@
+{
+    "preferred_provider": "fallback",
+    "providers": {
+        "openai": {
+            "enabled": false,
+            "model": "gpt-3.5-turbo",
+            "api_key": null
+        },
+        "anthropic": {
+            "enabled": false,
+            "model": "claude-3-sonnet-20240229",
+            "api_key": null
+        },
+        "local": {
+            "enabled": false,
+            "model": "llama2",
+            "base_url": "http://localhost:11434"
+        },
+        "fallback": {
+            "enabled": true
+        }
+    }
+}
