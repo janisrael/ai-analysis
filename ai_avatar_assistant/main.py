@@ -18,6 +18,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ui.avatar import AvatarWidget
 from ui.tooltip import TooltipWidget
+from ui.task_dialog import TaskDialog, QuickTaskDialog
+from ui.focus_mode import FocusModeManager
 from core.database import TaskDatabase
 from core.ai_engine import AIEngine
 from core.actions import ActionSystem
@@ -71,6 +73,7 @@ class AIAvatarAssistant:
             # UI components
             self.avatar = AvatarWidget()
             self.tooltip = TooltipWidget()
+            self.focus_manager = FocusModeManager(self)
             
             # State variables
             self.is_running = False
@@ -103,32 +106,60 @@ class AIAvatarAssistant:
         
         tray_menu.addSeparator()
         
-        # Add Task
-        add_task_action = QAction("Add Task", None)
-        add_task_action.triggered.connect(self.show_add_task_dialog)
-        tray_menu.addAction(add_task_action)
+        # Quick Add Task
+        quick_add_action = QAction("➕ Quick Add Task", None)
+        quick_add_action.triggered.connect(self.show_add_task_dialog)
+        tray_menu.addAction(quick_add_action)
+        
+        # Create Full Task
+        full_task_action = QAction("📝 Create Task...", None)
+        full_task_action.triggered.connect(lambda: self.show_full_task_dialog())
+        tray_menu.addAction(full_task_action)
         
         # Show Tasks
-        show_tasks_action = QAction("Show Tasks", None)
+        show_tasks_action = QAction("📋 Show Tasks", None)
         show_tasks_action.triggered.connect(self.show_tasks_overview)
         tray_menu.addAction(show_tasks_action)
         
         tray_menu.addSeparator()
         
+        # Focus Mode submenu
+        focus_menu = tray_menu.addMenu("🎯 Focus Mode")
+        
+        start_focus_action = QAction("Start 25min Session", None)
+        start_focus_action.triggered.connect(lambda: self.start_focus_mode())
+        focus_menu.addAction(start_focus_action)
+        
+        custom_focus_action = QAction("Custom Duration...", None)
+        custom_focus_action.triggered.connect(self.show_custom_focus_dialog)
+        focus_menu.addAction(custom_focus_action)
+        
+        self.stop_focus_action = QAction("Stop Current Session", None)
+        self.stop_focus_action.triggered.connect(self.stop_focus_session)
+        self.stop_focus_action.setEnabled(False)
+        focus_menu.addAction(self.stop_focus_action)
+        
+        tray_menu.addSeparator()
+        
         # Pause Notifications
-        self.pause_action = QAction("Pause Notifications", None)
+        self.pause_action = QAction("⏸️ Pause Notifications", None)
         self.pause_action.triggered.connect(self.toggle_notifications)
         tray_menu.addAction(self.pause_action)
         
+        # Statistics
+        stats_action = QAction("📊 Show Statistics", None)
+        stats_action.triggered.connect(self.show_statistics)
+        tray_menu.addAction(stats_action)
+        
         # Settings
-        settings_action = QAction("Settings", None)
+        settings_action = QAction("⚙️ Settings", None)
         settings_action.triggered.connect(self.show_settings)
         tray_menu.addAction(settings_action)
         
         tray_menu.addSeparator()
         
         # Exit
-        exit_action = QAction("Exit", None)
+        exit_action = QAction("🚪 Exit", None)
         exit_action.triggered.connect(self.quit_application)
         tray_menu.addAction(exit_action)
         
@@ -265,7 +296,21 @@ class AIAvatarAssistant:
         elif result.get('action') == 'hide_tooltip':
             self.tooltip.hide_tooltip()
         elif result.get('action') == 'show_task_dialog':
-            self.show_task_details(result.get('data'))
+            task_data = result.get('data')
+            if task_data:
+                self.show_full_task_dialog(task_data)
+        elif action_name == 'add_task':
+            self.show_add_task_dialog()
+        elif action_name == 'open_task':
+            # Get task data and show edit dialog
+            task_id = context.get('task_id')
+            if task_id:
+                tasks = self.db.get_tasks()
+                task = next((t for t in tasks if t['id'] == task_id), None)
+                if task:
+                    self.show_full_task_dialog(task)
+        elif action_name == 'start_focus_mode':
+            self.start_focus_mode(context)
         
         # Show result message if provided
         if result.get('success') and result.get('message'):
@@ -344,9 +389,27 @@ class AIAvatarAssistant:
     
     def show_add_task_dialog(self):
         """Show add task dialog"""
-        # For now, just add a sample task
-        # In a full implementation, this would open a proper dialog
-        
+        try:
+            dialog = QuickTaskDialog(self)
+            dialog.task_saved.connect(self.on_task_created)
+            dialog.exec_()
+        except Exception as e:
+            self.logger.error(f"Failed to show add task dialog: {e}")
+            # Fallback to quick task creation
+            self.show_quick_task_input()
+    
+    def show_full_task_dialog(self, task_data=None):
+        """Show full task creation/editing dialog"""
+        try:
+            dialog = TaskDialog(task_data, self)
+            dialog.task_saved.connect(self.on_task_saved)
+            dialog.task_deleted.connect(self.on_task_deleted)
+            dialog.exec_()
+        except Exception as e:
+            self.logger.error(f"Failed to show task dialog: {e}")
+    
+    def show_quick_task_input(self):
+        """Fallback quick task input"""
         sample_task_id = self.db.add_task(
             title="Sample Task",
             description="This is a sample task created from the system tray",
@@ -358,6 +421,160 @@ class AIAvatarAssistant:
                                  QSystemTrayIcon.Information, 2000)
         
         self.logger.info(f"Added sample task with ID: {sample_task_id}")
+    
+    def on_task_created(self, task_data):
+        """Handle new task creation"""
+        try:
+            task_id = self.db.add_task(
+                title=task_data['title'],
+                description=task_data.get('description', ''),
+                deadline=task_data.get('deadline'),
+                priority=task_data.get('priority', 3),
+                metadata=task_data.get('metadata', {})
+            )
+            
+            self.tray_icon.showMessage("AI Assistant", 
+                                     f"Task '{task_data['title']}' created!", 
+                                     QSystemTrayIcon.Information, 2000)
+            
+            self.logger.info(f"Created new task: {task_data['title']} (ID: {task_id})")
+            
+            # Schedule reminders if deadline is set
+            if task_data.get('deadline'):
+                self.scheduler.schedule_task_reminders(task_id, task_data['deadline'])
+                
+        except Exception as e:
+            self.logger.error(f"Failed to create task: {e}")
+            QMessageBox.warning(None, "Error", f"Failed to create task: {e}")
+    
+    def on_task_saved(self, task_data):
+        """Handle task save (create or update)"""
+        try:
+            if 'id' in task_data:
+                # Update existing task
+                self.db.update_task_status(task_data['id'], task_data['status'])
+                # Note: A full implementation would update all fields
+                self.logger.info(f"Updated task: {task_data['title']}")
+                message = f"Task '{task_data['title']}' updated!"
+            else:
+                # Create new task
+                self.on_task_created(task_data)
+                return
+            
+            self.tray_icon.showMessage("AI Assistant", message, 
+                                     QSystemTrayIcon.Information, 2000)
+                                     
+        except Exception as e:
+            self.logger.error(f"Failed to save task: {e}")
+            QMessageBox.warning(None, "Error", f"Failed to save task: {e}")
+    
+    def on_task_deleted(self, task_id):
+        """Handle task deletion"""
+        try:
+            # Mark as cancelled instead of deleting
+            self.db.update_task_status(task_id, "cancelled")
+            
+            self.tray_icon.showMessage("AI Assistant", 
+                                     "Task deleted successfully!", 
+                                     QSystemTrayIcon.Information, 2000)
+            
+            self.logger.info(f"Deleted task ID: {task_id}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to delete task: {e}")
+            QMessageBox.warning(None, "Error", f"Failed to delete task: {e}")
+    
+    def start_focus_mode(self, context=None):
+        """Start focus mode session"""
+        # Get task info from context if available
+        task_title = "Focus Session"
+        duration = 25  # Default Pomodoro duration
+        
+        if context and 'task_id' in context:
+            task_id = context['task_id']
+            tasks = self.db.get_tasks()
+            task = next((t for t in tasks if t['id'] == task_id), None)
+            if task:
+                task_title = f"Focus: {task['title']}"
+        elif context and 'metadata' in context:
+            metadata = context['metadata']
+            if isinstance(metadata, dict):
+                task_title = metadata.get('task_title', task_title)
+                duration = metadata.get('duration', duration)
+        
+        # Start focus session
+        if self.focus_manager.start_focus_session(task_title, duration):
+            self.avatar.set_mood("focused")
+            self.stop_focus_action.setEnabled(True)
+            self.tray_icon.showMessage(
+                "AI Assistant", 
+                f"Focus session started: {task_title}",
+                QSystemTrayIcon.Information, 2000
+            )
+            self.logger.info(f"Started focus session: {task_title}")
+        else:
+                         self.tray_icon.showMessage(
+                 "AI Assistant", 
+                 "A focus session is already active",
+                 QSystemTrayIcon.Warning, 2000
+             )
+    
+    def show_custom_focus_dialog(self):
+        """Show custom focus duration dialog"""
+        from PyQt5.QtWidgets import QInputDialog
+        
+        duration, ok = QInputDialog.getInt(
+            None, 
+            "Custom Focus Session", 
+            "Enter duration in minutes:", 
+            25, 1, 120
+        )
+        
+        if ok:
+            task_title, ok = QInputDialog.getText(
+                None,
+                "Focus Session",
+                "Task name (optional):",
+                text="Focus Session"
+            )
+            
+            if ok:
+                context = {
+                    'metadata': {
+                        'task_title': task_title,
+                        'duration': duration
+                    }
+                }
+                self.start_focus_mode(context)
+    
+    def stop_focus_session(self):
+        """Stop the current focus session"""
+        self.focus_manager.stop_current_session()
+        self.stop_focus_action.setEnabled(False)
+        self.avatar.set_mood("happy")
+    
+    def show_statistics(self):
+        """Show productivity statistics"""
+        stats = self.focus_manager.get_stats()
+        pending_tasks = len(self.db.get_tasks(status="pending"))
+        completed_today = len([t for t in self.db.get_tasks(status="completed") 
+                              if t.get('updated_at') and 
+                              datetime.fromisoformat(t['updated_at']).date() == datetime.now().date()])
+        
+        stats_data = {
+            "type": "statistics",
+            "title": "📊 Productivity Statistics",
+            "message": f"Today's Progress:\n" +
+                      f"• Focus sessions: {stats['sessions_today']}\n" +
+                      f"• Tasks completed: {completed_today}\n" +
+                      f"• Pending tasks: {pending_tasks}\n" +
+                      f"• Currently active: {'Yes' if stats['current_active'] else 'No'}",
+            "actions": ["start_focus_mode", "show_tasks", "dismiss"],
+            "urgency": 0.3,
+            "metadata": stats
+        }
+        
+        self.show_notification(stats_data)
     
     def show_tasks_overview(self):
         """Show tasks overview"""

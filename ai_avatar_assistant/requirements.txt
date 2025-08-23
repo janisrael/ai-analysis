@@ -1,8 +1,16 @@
+# Core Dependencies (Required)
 PyQt5==5.15.10
 APScheduler==3.10.4
-transformers==4.35.2
-torch==2.1.0
 requests==2.31.0
 python-dateutil==2.8.2
 Pillow==10.0.1
+
+# Optional Dependencies
+psutil==5.9.6
+
+# Development and Packaging
 pyinstaller==6.2.0
+
+# AI/ML Dependencies (Optional - for future enhancements)
+# transformers==4.35.2
+# torch==2.1.0
