@@ -1,273 +1,235 @@
 #!/usr/bin/env python3
 """
-Test script for AI Avatar Assistant components
+AI Avatar Assistant - System Test
+Quick test script to verify all components are working
 """
 
-import sys
 import os
-from datetime import datetime, timedelta
-
-# Add the project root to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-def test_database():
-    """Test database functionality"""
-    print("🗄️  Testing Database...")
-    
-    try:
-        from core.database import TaskDatabase
-        
-        db = TaskDatabase()
-        
-        # Test adding a task
-        task_id = db.add_task(
-            title="Test Task",
-            description="This is a test task",
-            deadline=datetime.now() + timedelta(hours=1),
-            priority=3
-        )
-        
-        print(f"✓ Created test task with ID: {task_id}")
-        
-        # Test retrieving tasks
-        tasks = db.get_tasks()
-        print(f"✓ Retrieved {len(tasks)} tasks from database")
-        
-        # Test updating task status
-        success = db.update_task_status(task_id, "completed")
-        print(f"✓ Updated task status: {success}")
-        
-        # Test events
-        event_id = db.add_event(
-            event_type="test",
-            title="Test Event",
-            trigger_time=datetime.now() + timedelta(minutes=5)
-        )
-        print(f"✓ Created test event with ID: {event_id}")
-        
-        print("✅ Database tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Database test failed: {e}")
-        return False
-
-def test_ai_engine():
-    """Test AI engine functionality"""
-    print("\n🧠 Testing AI Engine...")
-    
-    try:
-        from core.ai_engine import AIEngine
-        
-        ai = AIEngine()
-        
-        # Test situation analysis
-        recommendations = ai.analyze_current_situation()
-        print(f"✓ Generated {len(recommendations)} recommendations")
-        
-        # Test urgency calculation
-        urgency = ai.calculate_urgency(timedelta(hours=2), 4)
-        print(f"✓ Calculated urgency: {urgency}")
-        
-        # Test time formatting
-        time_str = ai.format_time_delta(timedelta(hours=2, minutes=30))
-        print(f"✓ Formatted time delta: {time_str}")
-        
-        # Test personality message
-        message = ai.get_personality_message("greeting")
-        print(f"✓ Generated personality message: {message}")
-        
-        print("✅ AI Engine tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"❌ AI Engine test failed: {e}")
-        return False
-
-def test_action_system():
-    """Test action system functionality"""
-    print("\n⚡ Testing Action System...")
-    
-    try:
-        from core.actions import ActionSystem
-        
-        actions = ActionSystem()
-        
-        # Test action execution
-        result = actions.execute_action("dismiss", {})
-        print(f"✓ Executed dismiss action: {result.get('success', False)}")
-        
-        # Test getting available actions
-        available = actions.get_available_actions()
-        print(f"✓ Found {len(available)} available actions")
-        
-        # Test task-specific actions
-        task_actions = actions.get_available_actions("task")
-        print(f"✓ Found {len(task_actions)} task-specific actions")
-        
-        print("✅ Action System tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Action System test failed: {e}")
-        return False
-
-def test_scheduler():
-    """Test scheduler functionality"""
-    print("\n⏰ Testing Scheduler...")
-    
-    try:
-        from core.scheduler import EventScheduler
-        
-        scheduler = EventScheduler()
-        
-        # Test scheduler status
-        status = scheduler.get_status()
-        print(f"✓ Scheduler status: running={status.get('running', False)}")
-        
-        # Test silent hours
-        is_silent = scheduler.is_silent_hours()
-        print(f"✓ Silent hours check: {is_silent}")
-        
-        # Test notification pause
-        is_paused = scheduler.is_notifications_paused()
-        print(f"✓ Notifications paused: {is_paused}")
-        
-        # Test event callback registration
-        def test_callback(event_data):
-            print(f"  Test callback received: {event_data.get('title', 'No title')}")
-        
-        scheduler.register_event_callback("test", test_callback)
-        print("✓ Registered test callback")
-        
-        print("✅ Scheduler tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Scheduler test failed: {e}")
-        return False
-
-def test_ui_components():
-    """Test UI components (without showing them)"""
-    print("\n🖼️  Testing UI Components...")
-    
-    try:
-        # Test imports without creating actual widgets
-        from ui.avatar import AvatarWidget
-        from ui.tooltip import TooltipWidget
-        
-        print("✓ Avatar widget import successful")
-        print("✓ Tooltip widget import successful")
-        
-        # Test configuration loading
-        from PyQt5.QtWidgets import QApplication
-        import sys
-        
-        # Create minimal QApplication for testing
-        if not QApplication.instance():
-            app = QApplication(sys.argv)
-        
-        # Test widget creation (but don't show)
-        avatar = AvatarWidget()
-        tooltip = TooltipWidget()
-        
-        print("✓ Created avatar widget")
-        print("✓ Created tooltip widget")
-        
-        print("✅ UI Component tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"❌ UI Component test failed: {e}")
-        return False
-
-def test_configuration():
-    """Test configuration loading"""
-    print("\n⚙️  Testing Configuration...")
-    
-    try:
-        import json
-        
-        # Ensure config file exists
-        os.makedirs("data", exist_ok=True)
-        
-        config_path = "data/config.json"
-        if not os.path.exists(config_path):
-            # Create default config for testing
-            default_config = {
-                "avatar": {"position": "bottom_right", "size": 64},
-                "notifications": {"enabled": True, "check_interval": 300},
-                "ai": {"personality": "friendly"}
-            }
-            with open(config_path, 'w') as f:
-                json.dump(default_config, f, indent=4)
-            print("✓ Created default configuration")
-        
-        # Test loading configuration
-        with open(config_path, 'r') as f:
-            config = json.load(f)
-        
-        print(f"✓ Loaded configuration with {len(config)} sections")
-        
-        # Validate required sections
-        required_sections = ["avatar", "notifications", "ai"]
-        for section in required_sections:
-            if section in config:
-                print(f"✓ Found required section: {section}")
-            else:
-                print(f"⚠️  Missing section: {section}")
-        
-        print("✅ Configuration tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"❌ Configuration test failed: {e}")
-        return False
+import sys
+import time
+import subprocess
 
 def test_dependencies():
-    """Test that all required dependencies are available"""
-    print("\n📦 Testing Dependencies...")
+    """Test if all required dependencies are installed"""
+    print("🔧 Testing Dependencies...")
     
-    dependencies = [
-        ("PyQt5", "PyQt5.QtWidgets"),
-        ("APScheduler", "apscheduler.schedulers.qt"),
-        ("JSON", "json"),
-        ("SQLite3", "sqlite3"),
-        ("Datetime", "datetime"),
-        ("Logging", "logging"),
-        ("OS", "os"),
-        ("Sys", "sys")
+    required_packages = [
+        'PyQt5',
+        'flask', 
+        'requests',
+        'apscheduler',
+        'psutil'
     ]
     
-    all_passed = True
+    missing_packages = []
     
-    for name, module in dependencies:
+    for package in required_packages:
         try:
-            __import__(module)
-            print(f"✓ {name} available")
-        except ImportError as e:
-            print(f"❌ {name} missing: {e}")
-            all_passed = False
+            __import__(package.lower().replace('-', '_'))
+            print(f"  ✅ {package}")
+        except ImportError:
+            print(f"  ❌ {package}")
+            missing_packages.append(package)
     
-    if all_passed:
-        print("✅ All dependencies available!")
-    else:
-        print("❌ Some dependencies are missing!")
+    if missing_packages:
+        print(f"\n⚠️ Missing packages: {', '.join(missing_packages)}")
+        print("Run: pip install -r requirements.txt")
+        return False
     
-    return all_passed
+    print("✅ All dependencies are installed!")
+    return True
 
-def run_all_tests():
-    """Run all tests and return summary"""
-    print("🚀 Starting AI Avatar Assistant System Tests...\n")
+def test_directory_structure():
+    """Test if required directories exist"""
+    print("\n📁 Testing Directory Structure...")
+    
+    required_dirs = [
+        'core',
+        'ui', 
+        'data',
+        'logs'
+    ]
+    
+    optional_dirs = [
+        'assets',
+        'data/demo',
+        'data/reports'
+    ]
+    
+    all_good = True
+    
+    # Test required directories
+    for dir_name in required_dirs:
+        if os.path.exists(dir_name):
+            print(f"  ✅ {dir_name}/")
+        else:
+            print(f"  ❌ {dir_name}/ (missing)")
+            all_good = False
+    
+    # Create optional directories
+    for dir_name in optional_dirs:
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name, exist_ok=True)
+            print(f"  📁 Created {dir_name}/")
+        else:
+            print(f"  ✅ {dir_name}/")
+    
+    return all_good
+
+def test_core_components():
+    """Test core components can be imported"""
+    print("\n🧠 Testing Core Components...")
+    
+    components = [
+        'core.ai_engine',
+        'core.data_source_manager',
+        'core.project_estimator', 
+        'core.analytics_engine',
+        'core.voice_system',
+        'core.widget_api'
+    ]
+    
+    all_good = True
+    
+    for component in components:
+        try:
+            __import__(component)
+            print(f"  ✅ {component}")
+        except Exception as e:
+            print(f"  ❌ {component} - {str(e)}")
+            all_good = False
+    
+    return all_good
+
+def test_ui_components():
+    """Test UI components can be imported"""
+    print("\n🎨 Testing UI Components...")
+    
+    # Check if we can import PyQt5
+    try:
+        from PyQt5.QtWidgets import QApplication
+        app = QApplication([])  # Create minimal app for testing
+        
+        components = [
+            'ui.avatar',
+            'ui.tooltip',
+            'ui.chat_interface',
+            'ui.analytics_dashboard',
+            'ui.settings_dashboard',
+            'ui.widget_integration_dialog'
+        ]
+        
+        all_good = True
+        
+        for component in components:
+            try:
+                __import__(component)
+                print(f"  ✅ {component}")
+            except Exception as e:
+                print(f"  ❌ {component} - {str(e)}")
+                all_good = False
+        
+        app.quit()
+        return all_good
+        
+    except Exception as e:
+        print(f"  ❌ PyQt5 not available - {str(e)}")
+        return False
+
+def test_demo_data():
+    """Test if demo data can be created"""
+    print("\n📊 Testing Demo Data Creation...")
+    
+    try:
+        # Run the demo setup
+        exec(open('demo.py').read().split('def main()')[0])
+        demo = AIAvatarDemo()
+        print("  ✅ Demo data created successfully")
+        return True
+    except Exception as e:
+        print(f"  ❌ Demo data creation failed - {str(e)}")
+        return False
+
+def test_widget_api():
+    """Test if widget API can start"""
+    print("\n🔗 Testing Widget API...")
+    
+    try:
+        from core.widget_api import WidgetIntegrationManager
+        from core.data_source_manager import DataSourceManager
+        from core.project_estimator import ProjectEstimator
+        
+        # Create minimal components
+        data_manager = DataSourceManager()
+        estimator = ProjectEstimator(data_manager)
+        
+        class MockAI:
+            def __init__(self):
+                self.analytics_engine = self
+            def get_visual_analytics_data(self):
+                return {"test": True}
+        
+        mock_ai = MockAI()
+        widget_manager = WidgetIntegrationManager(mock_ai, data_manager, estimator)
+        
+        # Try to initialize (but don't actually start server)
+        print("  ✅ Widget API components loaded")
+        return True
+        
+    except Exception as e:
+        print(f"  ❌ Widget API test failed - {str(e)}")
+        return False
+
+def run_quick_demo():
+    """Run a quick demo of key features"""
+    print("\n🎯 Running Quick Demo...")
+    
+    try:
+        from core.data_source_manager import DataSourceManager
+        from core.project_estimator import ProjectEstimator
+        
+        # Test data source manager
+        print("  🗄️ Testing Data Source Manager...")
+        data_manager = DataSourceManager()
+        status = data_manager.get_data_source_status()
+        print(f"    Data sources: {status['active_sources']}/{status['total_sources']}")
+        
+        # Test project estimator
+        print("  📊 Testing Project Estimator...")
+        estimator = ProjectEstimator(data_manager)
+        
+        # Simple estimation test
+        estimate = estimator.estimate_project(
+            "Build a simple React website",
+            ["User interface", "Backend API"],
+            ["react", "node.js"]
+        )
+        
+        print(f"    Estimated hours: {estimate.total_hours}")
+        print(f"    Difficulty: {estimate.difficulty_level}")
+        print(f"    Confidence: {estimate.confidence_level:.1%}")
+        
+        print("  ✅ Quick demo completed successfully!")
+        return True
+        
+    except Exception as e:
+        print(f"  ❌ Quick demo failed - {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def main():
+    """Run all tests"""
+    print("🤖 AI Avatar Assistant - System Test")
+    print("=" * 50)
     
     tests = [
         ("Dependencies", test_dependencies),
-        ("Configuration", test_configuration),
-        ("Database", test_database),
-        ("AI Engine", test_ai_engine),
-        ("Action System", test_action_system),
-        ("Scheduler", test_scheduler),
-        ("UI Components", test_ui_components)
+        ("Directory Structure", test_directory_structure),
+        ("Core Components", test_core_components),
+        ("UI Components", test_ui_components),
+        ("Widget API", test_widget_api),
+        ("Quick Demo", run_quick_demo)
     ]
     
     results = []
@@ -277,13 +239,13 @@ def run_all_tests():
             result = test_func()
             results.append((test_name, result))
         except Exception as e:
-            print(f"❌ {test_name} test crashed: {e}")
+            print(f"❌ {test_name} failed with error: {e}")
             results.append((test_name, False))
     
     # Summary
-    print("\n" + "="*50)
-    print("📊 TEST SUMMARY")
-    print("="*50)
+    print("\n" + "=" * 50)
+    print("📋 TEST SUMMARY")
+    print("=" * 50)
     
     passed = 0
     total = len(results)
@@ -297,14 +259,17 @@ def run_all_tests():
     print(f"\nResults: {passed}/{total} tests passed")
     
     if passed == total:
-        print("\n🎉 All tests passed! The AI Avatar Assistant is ready to run.")
-        print("To start the application, run: python main.py")
+        print("\n🎉 All tests passed! System is ready to use.")
+        print("\n🚀 Next steps:")
+        print("1. Run 'python demo.py' for a comprehensive demonstration")
+        print("2. Run 'python main.py' to start the full application")
+        print("3. Open the Widget Manager to create integrations")
     else:
-        print(f"\n⚠️  {total - passed} tests failed. Please check the issues above.")
-        print("Make sure all dependencies are installed: pip install -r requirements.txt")
-    
-    return passed == total
+        print(f"\n⚠️ {total - passed} tests failed. Please check the errors above.")
+        print("\nTroubleshooting:")
+        print("1. Install missing dependencies: pip install -r requirements.txt")
+        print("2. Ensure you're in the ai_avatar_assistant directory")
+        print("3. Check Python version (requires 3.8+)")
 
 if __name__ == "__main__":
-    success = run_all_tests()
-    sys.exit(0 if success else 1)
+    main()

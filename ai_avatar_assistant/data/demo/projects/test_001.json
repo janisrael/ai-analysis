@@ -1,0 +1,17 @@
+{
+  "id": "test_001",
+  "name": "Test E-commerce Site",
+  "status": "active",
+  "technologies": [
+    "react",
+    "node.js",
+    "postgresql"
+  ],
+  "requirements": [
+    "User authentication",
+    "Product catalog",
+    "Shopping cart"
+  ],
+  "budget": 25000,
+  "team_size": 3
+}

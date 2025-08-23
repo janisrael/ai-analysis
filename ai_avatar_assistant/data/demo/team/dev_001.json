@@ -1,0 +1,12 @@
+{
+  "id": "dev_001",
+  "name": "John Doe",
+  "role": "Full-Stack Developer",
+  "skills": [
+    "react",
+    "node.js",
+    "python"
+  ],
+  "hourly_rate": 75,
+  "availability": "available"
+}

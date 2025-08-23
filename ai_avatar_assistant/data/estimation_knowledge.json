@@ -1,0 +1,90 @@
+{
+  "project_types": {
+    "website": {
+      "base_hours": 40,
+      "complexity_multiplier": 1.0,
+      "common_features": [
+        "responsive design",
+        "contact form",
+        "cms",
+        "seo"
+      ],
+      "typical_roles": [
+        "frontend developer",
+        "designer",
+        "content creator"
+      ]
+    },
+    "web_app": {
+      "base_hours": 120,
+      "complexity_multiplier": 1.5,
+      "common_features": [
+        "user authentication",
+        "database",
+        "api",
+        "admin panel"
+      ],
+      "typical_roles": [
+        "frontend developer",
+        "backend developer",
+        "ui/ux designer",
+        "project manager"
+      ]
+    },
+    "mobile_app": {
+      "base_hours": 200,
+      "complexity_multiplier": 1.8,
+      "common_features": [
+        "native ui",
+        "api integration",
+        "offline mode",
+        "push notifications"
+      ],
+      "typical_roles": [
+        "mobile developer",
+        "backend developer",
+        "ui/ux designer",
+        "qa tester"
+      ]
+    },
+    "e-commerce": {
+      "base_hours": 160,
+      "complexity_multiplier": 1.6,
+      "common_features": [
+        "product catalog",
+        "shopping cart",
+        "payment processing",
+        "order management"
+      ],
+      "typical_roles": [
+        "frontend developer",
+        "backend developer",
+        "ui/ux designer",
+        "payment specialist"
+      ]
+    }
+  },
+  "feature_estimates": {
+    "user_authentication": 16,
+    "payment_integration": 24,
+    "api_integration": 12,
+    "admin_panel": 32,
+    "responsive_design": 20,
+    "search_functionality": 16,
+    "real_time_features": 40,
+    "file_upload": 8,
+    "email_notifications": 12,
+    "social_login": 8,
+    "multi_language": 24,
+    "reporting_dashboard": 40
+  },
+  "technology_learning_curves": {
+    "react": 0.8,
+    "vue": 0.6,
+    "angular": 1.0,
+    "django": 0.7,
+    "flask": 0.5,
+    "wordpress": 0.3,
+    "webflow": 0.2
+  }
+}
