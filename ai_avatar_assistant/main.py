@@ -24,6 +24,8 @@ from core.database import TaskDatabase
 from core.ai_engine import AIEngine
 from core.actions import ActionSystem
 from core.scheduler import EventScheduler
+from core.voice_system import VoiceNotificationSystem
+from core.external_apis import ExternalAPIManager
 
 class AIAvatarAssistant:
     """Main application class that coordinates all components"""
@@ -69,6 +71,8 @@ class AIAvatarAssistant:
             self.ai_engine = AIEngine()
             self.action_system = ActionSystem()
             self.scheduler = EventScheduler()
+            self.voice_system = VoiceNotificationSystem()
+            self.api_manager = ExternalAPIManager()
             
             # UI components
             self.avatar = AvatarWidget()
@@ -140,6 +144,23 @@ class AIAvatarAssistant:
         focus_menu.addAction(self.stop_focus_action)
         
         tray_menu.addSeparator()
+        
+        # Voice Control submenu
+        voice_menu = tray_menu.addMenu("🎙️ Voice")
+        
+        self.voice_enabled_action = QAction("Enable Voice Notifications", None)
+        self.voice_enabled_action.setCheckable(True)
+        self.voice_enabled_action.setChecked(self.voice_system.enabled)
+        self.voice_enabled_action.triggered.connect(self.toggle_voice_notifications)
+        voice_menu.addAction(self.voice_enabled_action)
+        
+        voice_test_action = QAction("Test Voice", None)
+        voice_test_action.triggered.connect(self.test_voice_system)
+        voice_menu.addAction(voice_test_action)
+        
+        voice_settings_action = QAction("Voice Settings...", None)
+        voice_settings_action.triggered.connect(self.show_voice_settings)
+        voice_menu.addAction(voice_settings_action)
         
         # Pause Notifications
         self.pause_action = QAction("⏸️ Pause Notifications", None)
@@ -318,6 +339,12 @@ class AIAvatarAssistant:
             if action_name == "mark_done":
                 self.avatar.set_mood("happy")
                 self.avatar.notify_normal()
+                # Voice feedback for task completion
+                if self.voice_system.enabled and context.get('task_id'):
+                    tasks = self.db.get_tasks()
+                    task = next((t for t in tasks if t['id'] == context['task_id']), None)
+                    if task:
+                        self.voice_system.speak_task_notification(task['title'], "completed")
             elif action_name in ["snooze", "dismiss"]:
                 self.avatar.set_mood("sleeping")
     
@@ -334,6 +361,29 @@ class AIAvatarAssistant:
         
         # Show notification
         self.show_notification(event_data)
+        
+        # Voice notification
+        if self.voice_system.enabled:
+            urgency_level = "urgent" if event_data.get('urgency', 0.5) >= 0.8 else "normal"
+            
+            # Determine notification type for voice
+            event_type = event_data.get('type', '')
+            title = event_data.get('title', '')
+            message = event_data.get('message', '')
+            
+            if 'deadline' in event_type or 'overdue' in event_type:
+                # Extract task title from message if possible
+                task_title = title.replace('⚠️', '').replace('🔥', '').strip()
+                notification_type = "deadline_soon" if "soon" in message else "deadline_now"
+                self.voice_system.speak_task_notification(task_title, notification_type)
+            elif event_type == "daily_summary":
+                self.voice_system.speak_notification(message, "normal")
+            elif event_type == "productivity_tip":
+                self.voice_system.speak_notification(f"Productivity tip: {message}", "friendly")
+            else:
+                # Generic notification
+                voice_text = f"{title}. {message}" if title and message else title or message
+                self.voice_system.speak_notification(voice_text, urgency_level)
         
         # Animate avatar based on urgency
         urgency = event_data.get('urgency', 0.5)
@@ -511,6 +561,11 @@ class AIAvatarAssistant:
                 f"Focus session started: {task_title}",
                 QSystemTrayIcon.Information, 2000
             )
+            
+            # Voice notification for focus start
+            if self.voice_system.enabled:
+                self.voice_system.speak_task_notification(task_title, "focus_start")
+            
             self.logger.info(f"Started focus session: {task_title}")
         else:
                          self.tray_icon.showMessage(
@@ -575,6 +630,112 @@ class AIAvatarAssistant:
         }
         
         self.show_notification(stats_data)
+    
+    def toggle_voice_notifications(self):
+        """Toggle voice notifications on/off"""
+        new_state = self.voice_enabled_action.isChecked()
+        self.voice_system.set_enabled(new_state)
+        
+        status_message = "Voice notifications enabled" if new_state else "Voice notifications disabled"
+        self.tray_icon.showMessage("AI Assistant", status_message, 
+                                 QSystemTrayIcon.Information, 2000)
+        
+        # Test voice if enabling
+        if new_state and self.voice_system.is_initialized:
+            self.voice_system.speak_notification("Voice notifications are now enabled.")
+    
+    def test_voice_system(self):
+        """Test the voice notification system"""
+        if not self.voice_system.is_initialized:
+            self.tray_icon.showMessage("AI Assistant", 
+                                     "Voice system not available. Please check configuration.",
+                                     QSystemTrayIcon.Warning, 3000)
+            return
+        
+        test_message = "This is a test of the voice notification system. If you can hear this, voice notifications are working correctly."
+        success = self.voice_system.test_voice(test_message)
+        
+        if not success:
+            self.tray_icon.showMessage("AI Assistant", 
+                                     "Voice test failed. Please check your audio settings.",
+                                     QSystemTrayIcon.Warning, 3000)
+    
+    def show_voice_settings(self):
+        """Show voice settings dialog"""
+        from PyQt5.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QSlider, QCheckBox, QPushButton, QComboBox
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Voice Settings")
+        dialog.setModal(True)
+        dialog.resize(400, 300)
+        
+        layout = QVBoxLayout()
+        
+        # Voice enabled checkbox
+        enabled_cb = QCheckBox("Enable Voice Notifications")
+        enabled_cb.setChecked(self.voice_system.enabled)
+        layout.addWidget(enabled_cb)
+        
+        # Voice rate slider
+        rate_layout = QHBoxLayout()
+        rate_layout.addWidget(QLabel("Speech Rate:"))
+        rate_slider = QSlider(Qt.Horizontal)
+        rate_slider.setRange(50, 400)
+        rate_slider.setValue(self.voice_system.voice_rate)
+        rate_label = QLabel(f"{self.voice_system.voice_rate} WPM")
+        rate_slider.valueChanged.connect(lambda v: rate_label.setText(f"{v} WPM"))
+        rate_layout.addWidget(rate_slider)
+        rate_layout.addWidget(rate_label)
+        layout.addLayout(rate_layout)
+        
+        # Voice volume slider
+        volume_layout = QHBoxLayout()
+        volume_layout.addWidget(QLabel("Volume:"))
+        volume_slider = QSlider(Qt.Horizontal)
+        volume_slider.setRange(0, 100)
+        volume_slider.setValue(int(self.voice_system.voice_volume * 100))
+        volume_label = QLabel(f"{int(self.voice_system.voice_volume * 100)}%")
+        volume_slider.valueChanged.connect(lambda v: volume_label.setText(f"{v}%"))
+        volume_layout.addWidget(volume_slider)
+        volume_layout.addWidget(volume_label)
+        layout.addLayout(volume_layout)
+        
+        # Voice gender selection
+        gender_layout = QHBoxLayout()
+        gender_layout.addWidget(QLabel("Voice Gender:"))
+        gender_combo = QComboBox()
+        gender_combo.addItems(["Female", "Male"])
+        gender_combo.setCurrentText(self.voice_system.voice_gender.title())
+        gender_layout.addWidget(gender_combo)
+        layout.addLayout(gender_layout)
+        
+        # Test button
+        test_btn = QPushButton("Test Voice")
+        test_btn.clicked.connect(lambda: self.voice_system.test_voice("This is a test of your voice settings."))
+        layout.addWidget(test_btn)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        save_btn = QPushButton("Save")
+        def save_settings():
+            self.voice_system.set_enabled(enabled_cb.isChecked())
+            self.voice_system.set_voice_rate(rate_slider.value())
+            self.voice_system.set_voice_volume(volume_slider.value() / 100.0)
+            self.voice_system.voice_gender = gender_combo.currentText().lower()
+            self.voice_system.save_config()
+            self.voice_enabled_action.setChecked(enabled_cb.isChecked())
+            dialog.accept()
+        
+        save_btn.clicked.connect(save_settings)
+        button_layout.addWidget(save_btn)
+        layout.addLayout(button_layout)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
     
     def show_tasks_overview(self):
         """Show tasks overview"""
