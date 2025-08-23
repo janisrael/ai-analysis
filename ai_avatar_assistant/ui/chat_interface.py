@@ -127,10 +127,11 @@ class MessageWidget(QFrame):
 class ConversationalAI:
     """AI brain for handling natural language conversations"""
     
-    def __init__(self, db, analytics_engine, action_system):
+    def __init__(self, db, analytics_engine, action_system, report_generator=None):
         self.db = db
         self.analytics_engine = analytics_engine
         self.action_system = action_system
+        self.report_generator = report_generator
         self.logger = logging.getLogger(__name__)
         
         # Conversation context
@@ -198,10 +199,11 @@ class ConversationalAI:
             "add_task": ["add task", "create task", "new task", "remind me", "i need to"],
             "productivity": ["productivity", "how am i doing", "performance", "stats", "analytics"],
             "focus": ["focus", "concentrate", "start focus", "focus mode", "pomodoro"],
-            "help": ["help", "what can you do", "commands", "how to", "assist"],
-            "status": ["status", "overview", "summary", "what's happening"],
-            "schedule": ["schedule", "calendar", "when", "time", "availability"],
-            "suggestions": ["suggest", "recommend", "advice", "what should", "ideas"]
+                         "help": ["help", "what can you do", "commands", "how to", "assist"],
+             "status": ["status", "overview", "summary", "what's happening"],
+             "schedule": ["schedule", "calendar", "when", "time", "availability"],
+             "suggestions": ["suggest", "recommend", "advice", "what should", "ideas"],
+             "report": ["report", "generate report", "create report", "show report", "analysis report"]
         }
         
         detected_intents = []
@@ -277,6 +279,8 @@ class ConversationalAI:
             return self.handle_status_request()
         elif primary_intent == "suggestions":
             return self.handle_suggestions_request()
+        elif primary_intent == "report":
+            return self.handle_report_request(user_input, entities)
         else:
             return self.handle_unknown_query(user_input)
     
@@ -533,6 +537,125 @@ Just ask me in natural language - for example:
         
         return response, actions
     
+    def handle_report_request(self, user_input: str, entities: Dict) -> tuple:
+        """Handle report generation requests"""
+        if not self.report_generator:
+            response = "I'd love to generate reports for you, but the report generator isn't available right now. You can still view analytics through the dashboard!"
+            actions = [{"label": "📊 Open Analytics", "action": "open_analytics", "context": {}}]
+            return response, actions
+        
+        # Parse what kind of report they want
+        query_lower = user_input.lower()
+        
+        # Check for project-specific report
+        if any(word in query_lower for word in ["project", "for", "about"]):
+            # Try to extract project name
+            project_name = self.extract_project_name(user_input)
+            if project_name:
+                try:
+                    report = self.report_generator.generate_project_report(project_name, user_input)
+                    temp_link = self.report_generator.generate_temporary_link(report)
+                    
+                    response = f"📊 I've generated a comprehensive report for '{project_name}'!\n\n"
+                    response += f"The report includes:\n"
+                    response += f"• 📈 Visual charts and analytics\n"
+                    response += f"• 💡 AI-powered insights\n"
+                    response += f"• 🎯 Actionable recommendations\n"
+                    response += f"• 🎙️ Voice narration (click 'Play Report')\n\n"
+                    response += f"Click the link below to view your report. When you open it, I'll start explaining the findings!"
+                    
+                    actions = [
+                        {"label": "📄 View Report", "action": "open_report", "context": {"report_id": report.report_id, "url": temp_link}},
+                        {"label": "📊 Analytics Dashboard", "action": "open_analytics", "context": {}},
+                        {"label": "💾 Download PDF", "action": "download_report", "context": {"report_id": report.report_id}}
+                    ]
+                    
+                    return response, actions
+                    
+                except Exception as e:
+                    response = f"I encountered an issue generating the report for '{project_name}'. Let me try a different approach."
+                    actions = [{"label": "📊 View Analytics", "action": "open_analytics", "context": {}}]
+                    return response, actions
+            else:
+                response = "I'd be happy to generate a project report! Which project would you like me to analyze? You can say something like 'Generate report for Website Redesign'."
+                actions = [{"label": "📋 List Projects", "action": "list_projects", "context": {}}]
+                return response, actions
+        
+        # Productivity report
+        elif any(word in query_lower for word in ["productivity", "performance", "stats"]):
+            try:
+                time_period = "30days"
+                if "week" in query_lower:
+                    time_period = "7days"
+                elif "quarter" in query_lower:
+                    time_period = "90days"
+                
+                report = self.report_generator.generate_productivity_report(time_period)
+                temp_link = self.report_generator.generate_temporary_link(report)
+                
+                response = f"📈 I've generated your productivity analysis report!\n\n"
+                response += f"The report covers:\n"
+                response += f"• 📊 Performance trends and metrics\n"
+                response += f"• 🔍 Detailed pattern analysis\n"
+                response += f"• 💡 Personalized recommendations\n"
+                response += f"• 🎙️ Voice explanation of findings\n\n"
+                response += f"Click below to view your report with voice narration!"
+                
+                actions = [
+                    {"label": "📄 View Report", "action": "open_report", "context": {"report_id": report.report_id, "url": temp_link}},
+                    {"label": "📊 Live Analytics", "action": "open_analytics", "context": {}}
+                ]
+                
+                return response, actions
+                
+            except Exception as e:
+                response = "I had trouble generating your productivity report. Let me show you the analytics dashboard instead."
+                actions = [{"label": "📊 Open Analytics", "action": "open_analytics", "context": {}}]
+                return response, actions
+        
+        # Custom report
+        else:
+            try:
+                report = self.report_generator.generate_custom_report(user_input)
+                temp_link = self.report_generator.generate_temporary_link(report)
+                
+                response = f"📋 I've created a custom report based on your request!\n\n"
+                response += f"The report includes my analysis and findings related to: '{user_input}'\n\n"
+                response += f"Click below to view the report with voice explanation!"
+                
+                actions = [
+                    {"label": "📄 View Report", "action": "open_report", "context": {"report_id": report.report_id, "url": temp_link}},
+                    {"label": "📊 Analytics", "action": "open_analytics", "context": {}}
+                ]
+                
+                return response, actions
+                
+            except Exception as e:
+                response = "I can help you generate various reports! Try asking for:\n• 'Generate report for [project name]'\n• 'Show me my productivity report'\n• 'Create analysis report for last week'"
+                actions = [{"label": "📊 View Analytics", "action": "open_analytics", "context": {}}]
+                return response, actions
+    
+    def extract_project_name(self, user_input: str) -> Optional[str]:
+        """Extract project name from user input"""
+        # Simple extraction - look for words after "for", "about", "on"
+        indicators = ["for", "about", "on", "project"]
+        words = user_input.split()
+        
+        for i, word in enumerate(words):
+            if word.lower() in indicators and i + 1 < len(words):
+                # Take the next 1-3 words as project name
+                project_words = []
+                for j in range(i + 1, min(i + 4, len(words))):
+                    if words[j].lower() not in ["report", "analysis", "the", "my"]:
+                        project_words.append(words[j].strip(".,!?"))
+                    else:
+                        break
+                
+                if project_words:
+                    return " ".join(project_words)
+        
+        return None
+    
     def handle_unknown_query(self, user_input: str) -> tuple:
         """Handle queries that don't match known intents"""
         response = f"I'm not quite sure how to help with '{user_input}', but I'm always learning! Here are some things I can definitely help you with:"
@@ -582,15 +705,16 @@ class ChatInterface(QWidget):
     
     action_triggered = pyqtSignal(str, dict)
     
-    def __init__(self, db, analytics_engine, action_system, voice_system=None, parent=None):
+    def __init__(self, db, analytics_engine, action_system, voice_system=None, report_generator=None, parent=None):
         super().__init__(parent)
         self.db = db
         self.analytics_engine = analytics_engine
         self.action_system = action_system
         self.voice_system = voice_system
+        self.report_generator = report_generator
         
         # Initialize conversational AI
-        self.ai = ConversationalAI(db, analytics_engine, action_system)
+        self.ai = ConversationalAI(db, analytics_engine, action_system, report_generator)
         
         # Chat state
         self.messages = []

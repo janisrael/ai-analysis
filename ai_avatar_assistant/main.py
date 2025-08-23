@@ -27,7 +27,9 @@ from core.scheduler import EventScheduler
 from core.voice_system import VoiceNotificationSystem
 from core.external_apis import ExternalAPIManager
 from core.analytics_engine import LiveAnalyticsEngine
+from core.report_generator import ReportGenerator
 from ui.analytics_dashboard import AnalyticsDashboard
+from ui.chat_interface import ChatInterface
 
 class AIAvatarAssistant:
     """Main application class that coordinates all components"""
@@ -76,12 +78,17 @@ class AIAvatarAssistant:
             self.voice_system = VoiceNotificationSystem()
             self.api_manager = ExternalAPIManager()
             self.analytics_engine = LiveAnalyticsEngine()
+            self.report_generator = ReportGenerator("data/tasks.db", self.analytics_engine, self.voice_system)
             
             # UI components
             self.avatar = AvatarWidget()
             self.tooltip = TooltipWidget()
             self.focus_manager = FocusModeManager(self)
             self.analytics_dashboard = AnalyticsDashboard()
+            self.chat_interface = ChatInterface(
+                self.db, self.analytics_engine, self.action_system, 
+                self.voice_system, self.report_generator
+            )
             
             # State variables
             self.is_running = False
@@ -236,6 +243,9 @@ class AIAvatarAssistant:
         
         # Analytics dashboard signals
         self.analytics_dashboard.refresh_requested.connect(self.refresh_analytics_data)
+        
+        # Chat interface signals
+        self.chat_interface.action_triggered.connect(self.on_action_triggered)
     
     def setup_timers(self):
         """Setup application timers"""
@@ -300,19 +310,15 @@ class AIAvatarAssistant:
     # Event Handlers
     @pyqtSlot()
     def on_avatar_clicked(self):
-        """Handle avatar click"""
-        self.logger.info("Avatar clicked")
+        """Handle avatar click - now opens chat interface"""
+        self.logger.info("Avatar clicked - opening chat interface")
         
-        # Show main menu tooltip
-        menu_data = {
-            "type": "main_menu",
-            "title": "🤖 AI Assistant",
-            "message": "How can I help you today?",
-            "actions": ["show_tasks", "add_task", "start_focus_mode", "get_suggestions"],
-            "urgency": 0.5
-        }
+        # Open chat interface
+        self.chat_interface.show_chat()
         
-        self.show_notification(menu_data)
+        # Voice greeting if enabled
+        if self.voice_system.enabled:
+            self.voice_system.speak_notification("Hello! I'm here to help. What would you like to know?", "friendly")
     
     @pyqtSlot()
     def on_avatar_hovered(self):
@@ -364,6 +370,12 @@ class AIAvatarAssistant:
                 self.show_analytics_dashboard()
         elif action_name == 'dismiss':
             self.tooltip.hide_tooltip()
+        elif action_name == 'open_report':
+            self.open_report(context)
+        elif action_name == 'download_report':
+            self.download_report(context)
+        elif action_name == 'list_projects':
+            self.show_project_list()
         
         # Show result message if provided
         if result.get('success') and result.get('message'):
@@ -757,6 +769,127 @@ class AIAvatarAssistant:
             self.analytics_dashboard.update_dashboard(analytics_data)
         except Exception as e:
             self.logger.error(f"Error refreshing analytics data: {e}")
+    
+    def open_report(self, context: Dict):
+        """Open a generated report"""
+        report_id = context.get("report_id")
+        url = context.get("url")
+        
+        if not report_id:
+            return
+        
+        try:
+            # Get the report
+            report = self.report_generator.get_report(report_id)
+            if report and report.html_path and os.path.exists(report.html_path):
+                # Open the HTML file in the default browser
+                import webbrowser
+                webbrowser.open(f"file://{os.path.abspath(report.html_path)}")
+                
+                # Voice announcement
+                if self.voice_system.enabled:
+                    self.voice_system.speak_notification(
+                        "Opening your report. Click the play button in the report to hear my voice explanation.",
+                        "normal"
+                    )
+                
+                self.logger.info(f"Opened report {report_id}")
+            else:
+                self.tray_icon.showMessage(
+                    "AI Assistant", 
+                    "Report not found or expired.",
+                    QSystemTrayIcon.Warning, 3000
+                )
+        except Exception as e:
+            self.logger.error(f"Error opening report: {e}")
+            self.tray_icon.showMessage(
+                "AI Assistant", 
+                f"Error opening report: {e}",
+                QSystemTrayIcon.Critical, 3000
+            )
+    
+    def download_report(self, context: Dict):
+        """Download a report as PDF"""
+        report_id = context.get("report_id")
+        
+        if not report_id:
+            return
+        
+        try:
+            report = self.report_generator.get_report(report_id)
+            if report and report.pdf_path and os.path.exists(report.pdf_path):
+                # Open file dialog to save PDF
+                from PyQt5.QtWidgets import QFileDialog
+                
+                save_path, _ = QFileDialog.getSaveFileName(
+                    None,
+                    "Save Report",
+                    f"{report.title.replace(':', '-')}.pdf",
+                    "PDF Files (*.pdf)"
+                )
+                
+                if save_path:
+                    import shutil
+                    shutil.copy2(report.pdf_path, save_path)
+                    
+                    self.tray_icon.showMessage(
+                        "AI Assistant", 
+                        f"Report saved to {save_path}",
+                        QSystemTrayIcon.Information, 3000
+                    )
+                    
+                    if self.voice_system.enabled:
+                        self.voice_system.speak_notification("Report downloaded successfully.", "normal")
+            else:
+                self.tray_icon.showMessage(
+                    "AI Assistant", 
+                    "PDF version not available for this report.",
+                    QSystemTrayIcon.Warning, 3000
+                )
+        except Exception as e:
+            self.logger.error(f"Error downloading report: {e}")
+    
+    def show_project_list(self):
+        """Show list of available projects"""
+        try:
+            # Get projects from tasks metadata
+            projects = set()
+            tasks = self.db.get_tasks()
+            
+            for task in tasks:
+                metadata = task.get('metadata', '{}')
+                if isinstance(metadata, str):
+                    try:
+                        metadata = json.loads(metadata)
+                    except:
+                        metadata = {}
+                
+                project = metadata.get('project') or metadata.get('category')
+                if project:
+                    projects.add(project)
+            
+            if projects:
+                project_list = "\n".join([f"• {project}" for project in sorted(projects)])
+                projects_data = {
+                    "type": "project_list",
+                    "title": "📋 Available Projects",
+                    "message": f"Here are your projects:\n\n{project_list}\n\nAsk me to 'Generate report for [project name]'",
+                    "actions": ["dismiss"],
+                    "urgency": 0.3
+                }
+            else:
+                projects_data = {
+                    "type": "no_projects",
+                    "title": "📋 No Projects Found",
+                    "message": "I couldn't find any projects in your tasks. Try adding project names to your task metadata, or ask for a general productivity report instead.",
+                    "actions": ["add_task", "dismiss"],
+                    "urgency": 0.3
+                }
+            
+            self.show_notification(projects_data)
+            
+        except Exception as e:
+            self.logger.error(f"Error showing project list: {e}")
     
     def toggle_voice_notifications(self):
         """Toggle voice notifications on/off"""
