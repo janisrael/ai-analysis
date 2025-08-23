@@ -26,6 +26,8 @@ from core.actions import ActionSystem
 from core.scheduler import EventScheduler
 from core.voice_system import VoiceNotificationSystem
 from core.external_apis import ExternalAPIManager
+from core.analytics_engine import LiveAnalyticsEngine
+from ui.analytics_dashboard import AnalyticsDashboard
 
 class AIAvatarAssistant:
     """Main application class that coordinates all components"""
@@ -73,11 +75,13 @@ class AIAvatarAssistant:
             self.scheduler = EventScheduler()
             self.voice_system = VoiceNotificationSystem()
             self.api_manager = ExternalAPIManager()
+            self.analytics_engine = LiveAnalyticsEngine()
             
             # UI components
             self.avatar = AvatarWidget()
             self.tooltip = TooltipWidget()
             self.focus_manager = FocusModeManager(self)
+            self.analytics_dashboard = AnalyticsDashboard()
             
             # State variables
             self.is_running = False
@@ -172,6 +176,11 @@ class AIAvatarAssistant:
         stats_action.triggered.connect(self.show_statistics)
         tray_menu.addAction(stats_action)
         
+        # Analytics Dashboard
+        analytics_action = QAction("📈 Analytics Dashboard", None)
+        analytics_action.triggered.connect(self.show_analytics_dashboard)
+        tray_menu.addAction(analytics_action)
+        
         # Settings
         settings_action = QAction("⚙️ Settings", None)
         settings_action.triggered.connect(self.show_settings)
@@ -224,6 +233,9 @@ class AIAvatarAssistant:
         
         # Scheduler callbacks
         self.scheduler.register_default_callback(self.on_event_triggered)
+        
+        # Analytics dashboard signals
+        self.analytics_dashboard.refresh_requested.connect(self.refresh_analytics_data)
     
     def setup_timers(self):
         """Setup application timers"""
@@ -231,6 +243,11 @@ class AIAvatarAssistant:
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(60000)  # Every minute
+        
+        # Analytics update timer
+        self.analytics_timer = QTimer()
+        self.analytics_timer.timeout.connect(self.update_analytics_periodically)
+        self.analytics_timer.start(600000)  # Every 10 minutes
     
     def start(self):
         """Start the application"""
@@ -332,6 +349,21 @@ class AIAvatarAssistant:
                     self.show_full_task_dialog(task)
         elif action_name == 'start_focus_mode':
             self.start_focus_mode(context)
+        elif action_name == 'open_analytics':
+            self.show_analytics_dashboard()
+        elif action_name == 'apply_suggestion':
+            # Handle AI suggestion application
+            self.tooltip.hide_tooltip()
+            self.tray_icon.showMessage("AI Assistant", "AI suggestion noted. Check analytics for details.", 
+                                     QSystemTrayIcon.Information, 2000)
+        elif action_name in ['show_tasks', 'get_suggestions']:
+            # Handle various tooltip actions
+            if action_name == 'show_tasks':
+                self.show_tasks_overview()
+            elif action_name == 'get_suggestions':
+                self.show_analytics_dashboard()
+        elif action_name == 'dismiss':
+            self.tooltip.hide_tooltip()
         
         # Show result message if provided
         if result.get('success') and result.get('message'):
@@ -630,6 +662,101 @@ class AIAvatarAssistant:
         }
         
         self.show_notification(stats_data)
+    
+    def show_analytics_dashboard(self):
+        """Show the analytics dashboard with live insights"""
+        try:
+            # Get fresh analytics data
+            analytics_data = self.analytics_engine.get_visual_analytics_data()
+            
+            # Update dashboard
+            self.analytics_dashboard.update_dashboard(analytics_data)
+            
+            # Show dashboard
+            self.analytics_dashboard.show_dashboard()
+            
+            # Voice announcement if enabled
+            if self.voice_system.enabled:
+                self.voice_system.speak_notification("Analytics dashboard opened. Analyzing your productivity patterns.", "normal")
+            
+        except Exception as e:
+            self.logger.error(f"Error showing analytics dashboard: {e}")
+            self.tray_icon.showMessage(
+                "AI Assistant", 
+                f"Analytics dashboard error: {e}",
+                QSystemTrayIcon.Warning, 3000
+            )
+    
+    def update_analytics_periodically(self):
+        """Periodically update analytics and provide insights"""
+        try:
+            # Get current situation analysis
+            analysis = self.analytics_engine.analyze_current_situation()
+            
+            # Check for critical alerts
+            alerts = analysis.get("alerts", [])
+            critical_alerts = [alert for alert in alerts if alert.get("severity") == "critical"]
+            
+            if critical_alerts:
+                # Show critical alert notification
+                for alert in critical_alerts[:2]:  # Max 2 critical alerts
+                    alert_data = {
+                        "type": "critical_alert",
+                        "title": f"🚨 {alert.get('title', 'Critical Alert')}",
+                        "message": alert.get("message", ""),
+                        "actions": ["open_analytics", "dismiss"],
+                        "urgency": 1.0
+                    }
+                    self.show_notification(alert_data)
+                    
+                    # Voice alert if enabled
+                    if self.voice_system.enabled:
+                        self.voice_system.speak_notification(
+                            f"Critical alert: {alert.get('message', '')}", 
+                            "urgent", 
+                            interrupt=True
+                        )
+            
+            # Check for high-priority recommendations
+            recommendations = analysis.get("recommendations", [])
+            high_priority_recs = [rec for rec in recommendations if rec.get("priority") in ["urgent", "high"]]
+            
+            if high_priority_recs and len(critical_alerts) == 0:  # Don't spam if there are critical alerts
+                # Show one high-priority recommendation
+                rec = high_priority_recs[0]
+                rec_data = {
+                    "type": "ai_recommendation",
+                    "title": f"💡 {rec.get('title', 'AI Suggestion')}",
+                    "message": rec.get("description", ""),
+                    "actions": ["open_analytics", "apply_suggestion", "dismiss"],
+                    "urgency": 0.7
+                }
+                
+                # Only show recommendation every 30 minutes to avoid spam
+                current_time = datetime.now()
+                if not hasattr(self, '_last_recommendation_time') or \
+                   (current_time - self._last_recommendation_time).seconds > 1800:
+                    
+                    self.show_notification(rec_data)
+                    self._last_recommendation_time = current_time
+                    
+                    # Voice recommendation if enabled
+                    if self.voice_system.enabled:
+                        self.voice_system.speak_notification(
+                            f"AI recommendation: {rec.get('description', '')}", 
+                            "friendly"
+                        )
+        
+        except Exception as e:
+            self.logger.error(f"Error in analytics update: {e}")
+    
+    def refresh_analytics_data(self):
+        """Refresh analytics data for the dashboard"""
+        try:
+            analytics_data = self.analytics_engine.get_visual_analytics_data()
+            self.analytics_dashboard.update_dashboard(analytics_data)
+        except Exception as e:
+            self.logger.error(f"Error refreshing analytics data: {e}")
     
     def toggle_voice_notifications(self):
         """Toggle voice notifications on/off"""
