@@ -1,19 +1,26 @@
-# Core Dependencies (Required)
-PyQt5==5.15.10
-APScheduler==3.10.4
+# Core dependencies
+PyQt5==5.15.9
+apscheduler==3.10.4
+sqlite3-api==0.1.1
 requests==2.31.0
-python-dateutil==2.8.2
-Pillow==10.0.1
+psutil==5.9.5
+pyttsx3==2.90
+
+# Data source integrations (optional)
+mysql-connector-python==8.1.0
+psycopg2-binary==2.9.7
+pymongo==4.5.0
 
 # Optional Dependencies
-psutil==5.9.6
 matplotlib==3.7.2
 numpy==1.24.3
 reportlab==4.0.4
 
-# Development and Packaging
-pyinstaller==6.2.0
+# Widget API dependencies
+Flask==2.3.3
+Flask-CORS==4.0.0
+PyJWT==2.8.0
+Jinja2==3.1.2
 
-# AI/ML Dependencies (Optional - for future enhancements)
-# transformers==4.35.2
-# torch==2.1.0
+# UI utilities
+pyperclip==1.8.2
