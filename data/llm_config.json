@@ -1,0 +1,61 @@
+{
+    "preferred_provider": "local",
+    "providers": {
+        "openai": {
+            "enabled": false,
+            "model": "gpt-3.5-turbo",
+            "api_key": null,
+            "temperature": 0.7,
+            "max_tokens": 2000
+        },
+        "anthropic": {
+            "enabled": false,
+            "model": "claude-3-sonnet-20240229",
+            "api_key": null,
+            "temperature": 0.7,
+            "max_tokens": 2000
+        },
+        "local": {
+            "enabled": true,
+            "model": "llama2",
+            "base_url": "http://localhost:11434",
+            "temperature": 0.7,
+            "max_tokens": 2000,
+            "alternative_models": [
+                "neural-chat",
+                "mistral",
+                "codellama"
+            ]
+        },
+        "fallback": {
+            "enabled": true
+        }
+    },
+    "model_settings": {
+        "llama2": {
+            "description": "General purpose model, excellent for project estimation and analysis",
+            "best_for": ["project_estimation", "general_chat", "analysis"],
+            "response_time": "fast",
+            "quality": "high"
+        },
+        "neural-chat": {
+            "description": "Conversational AI model, great for natural interactions",
+            "best_for": ["chat_interface", "voice_commands", "user_interaction"],
+            "response_time": "fast",
+            "quality": "very_high"
+        }
+    },
+    "auto_switch": {
+        "enabled": true,
+        "rules": {
+            "project_estimation": "llama2",
+            "team_recommendation": "llama2", 
+            "chat_interface": "neural-chat",
+            "voice_commands": "neural-chat",
+            "technical_analysis": "llama2",
+            "general_queries": "llama2"
+        }
+    },
+    "last_updated": "2024-01-20T12:00:00Z",
+    "version": "1.0"
+}
