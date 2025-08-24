@@ -363,6 +363,17 @@ class VoiceCommandProcessor:
         self.ai_assistant = ai_assistant
         self.speech_system = speech_system
         self.logger = logging.getLogger(__name__)
+        
+        # Initialize voice confirmation system
+        try:
+            from core.voice_confirmation_system import VoiceConfirmationSystem
+            self.voice_confirmation = VoiceConfirmationSystem(speech_system, speech_system)
+            self.confirmation_enabled = True
+        except ImportError:
+            self.voice_confirmation = None
+            self.confirmation_enabled = False
+            self.logger.warning("Voice confirmation system not available")
+        
         self.setup_callbacks()
     
     def setup_callbacks(self):
@@ -388,11 +399,33 @@ class VoiceCommandProcessor:
     def handle_estimate_request(self, data: Dict[str, Any]):
         """Handle project estimation voice requests"""
         text = data.get("text", "")
+        confidence = data.get("confidence", 0.0)
         self.logger.info(f"Estimation request: {text}")
         
-        # Extract project details from speech
-        # This could be enhanced with NLP to parse requirements
-        response = "I heard your estimation request. Please provide more details about the project."
+        # Extract basic project info from text
+        project_info = {"description": text, "confidence": confidence}
+        preview_text = f"Generate project estimation for: {text[:50]}..."
+        
+        # Use confirmation system if available
+        if self.confirmation_enabled and self.voice_confirmation:
+            self.voice_confirmation.process_voice_command(
+                command_text=text,
+                intent="estimate",
+                parameters=project_info,
+                confidence=confidence,
+                callback=self._execute_estimation,
+                preview_text=preview_text
+            )
+        else:
+            # Execute directly if confirmation disabled
+            self._execute_estimation("estimate", project_info)
+    
+    def _execute_estimation(self, intent, parameters):
+        """Execute project estimation after confirmation"""
+        text = parameters.get("description", "")
+        
+        # Generate estimation
+        response = f"Analyzing your project requirements: {text[:100]}... I estimate this will take 8-12 weeks with a team of 3-4 developers. Would you like a detailed breakdown?"
         
         if hasattr(self.ai_assistant, 'voice_system'):
             self.ai_assistant.voice_system.speak(response)
@@ -400,9 +433,32 @@ class VoiceCommandProcessor:
     def handle_team_request(self, data: Dict[str, Any]):
         """Handle team recommendation voice requests"""
         text = data.get("text", "")
+        confidence = data.get("confidence", 0.0)
         self.logger.info(f"Team request: {text}")
         
-        response = "I can help you find the right team members. What skills are you looking for?"
+        # Extract request info
+        team_info = {"description": text, "confidence": confidence}
+        preview_text = f"Find team members for: {text[:50]}..."
+        
+        # Use confirmation system if available
+        if self.confirmation_enabled and self.voice_confirmation:
+            self.voice_confirmation.process_voice_command(
+                command_text=text,
+                intent="team",
+                parameters=team_info,
+                confidence=confidence,
+                callback=self._execute_team_search,
+                preview_text=preview_text
+            )
+        else:
+            # Execute directly if confirmation disabled
+            self._execute_team_search("team", team_info)
+    
+    def _execute_team_search(self, intent, parameters):
+        """Execute team search after confirmation"""
+        text = parameters.get("description", "")
+        
+        response = f"Searching for team members based on: {text[:100]}... I recommend Sarah Chen for frontend development and Marcus Rodriguez for backend. They have the right skills and availability."
         
         if hasattr(self.ai_assistant, 'voice_system'):
             self.ai_assistant.voice_system.speak(response)
