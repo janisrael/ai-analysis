@@ -17,14 +17,15 @@
         },
         "local": {
             "enabled": true,
-            "model": "llama2",
+            "model": "mistral",
             "base_url": "http://localhost:11434",
             "temperature": 0.7,
             "max_tokens": 2000,
             "alternative_models": [
+                "llama2",
                 "neural-chat",
-                "mistral",
-                "codellama"
+                "codellama",
+                "phi"
             ]
         },
         "fallback": {
@@ -32,30 +33,74 @@
         }
     },
     "model_settings": {
+        "mistral": {
+            "description": "Superior reasoning and complex analysis, best overall model",
+            "best_for": ["complex_analysis", "strategic_planning", "detailed_estimation"],
+            "response_time": "medium",
+            "quality": "excellent",
+            "specialization": "reasoning"
+        },
         "llama2": {
-            "description": "General purpose model, excellent for project estimation and analysis",
+            "description": "Reliable general purpose model, excellent for project estimation",
             "best_for": ["project_estimation", "general_chat", "analysis"],
             "response_time": "fast",
-            "quality": "high"
+            "quality": "high",
+            "specialization": "general"
         },
         "neural-chat": {
             "description": "Conversational AI model, great for natural interactions",
             "best_for": ["chat_interface", "voice_commands", "user_interaction"],
             "response_time": "fast",
-            "quality": "very_high"
+            "quality": "very_high",
+            "specialization": "conversation"
+        },
+        "codellama": {
+            "description": "Code-focused model, excellent for technical discussions",
+            "best_for": ["code_review", "technical_architecture", "programming_help"],
+            "response_time": "fast",
+            "quality": "high",
+            "specialization": "code"
+        },
+        "phi": {
+            "description": "Lightweight and fast model for quick responses",
+            "best_for": ["quick_queries", "simple_tasks", "fast_responses"],
+            "response_time": "very_fast",
+            "quality": "good",
+            "specialization": "speed"
         }
     },
     "auto_switch": {
         "enabled": true,
         "rules": {
-            "project_estimation": "llama2",
-            "team_recommendation": "llama2", 
+            "project_estimation": "mistral",
+            "complex_analysis": "mistral",
+            "strategic_planning": "mistral",
+            "team_recommendation": "llama2",
             "chat_interface": "neural-chat",
             "voice_commands": "neural-chat",
-            "technical_analysis": "llama2",
+            "user_interaction": "neural-chat",
+            "code_review": "codellama",
+            "technical_analysis": "codellama",
+            "programming_help": "codellama",
+            "architecture_design": "codellama",
+            "quick_queries": "phi",
+            "simple_tasks": "phi",
             "general_queries": "llama2"
         }
     },
-    "last_updated": "2024-01-20T12:00:00Z",
-    "version": "1.0"
+    "performance_optimization": {
+        "enabled": true,
+        "preload_models": ["mistral", "neural-chat"],
+        "cache_responses": true,
+        "response_timeout": 30,
+        "fallback_on_timeout": true
+    },
+    "advanced_features": {
+        "context_awareness": true,
+        "multi_model_consensus": false,
+        "adaptive_model_selection": true,
+        "learning_from_feedback": true
+    },
+    "last_updated": "2024-01-20T14:30:00Z",
+    "version": "2.0"
 }
