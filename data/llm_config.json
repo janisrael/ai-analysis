@@ -102,5 +102,21 @@
         "learning_from_feedback": true
     },
     "last_updated": "2024-01-20T14:30:00Z",
-    "version": "2.0"
+    "version": "2.0",
+    "agent_identity": {
+        "name": "ARIA",
+        "full_name": "AI Reasoning & Integration Assistant",
+        "description": "Universal AI orchestration agent with multi-model intelligence",
+        "personality": "Professional, helpful, and intelligent assistant focused on project management and development",
+        "capabilities": [
+            "Multi-model AI orchestration",
+            "Project estimation and planning", 
+            "Team recommendations",
+            "Real-time analytics",
+            "Voice interaction",
+            "Widget integration",
+            "Code analysis and review",
+            "Workflow automation"
+        ]
+    }
 }
