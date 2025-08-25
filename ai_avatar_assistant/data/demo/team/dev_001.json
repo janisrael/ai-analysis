@@ -1,0 +1,21 @@
+{
+  "id": "dev_001",
+  "name": "Alice Chen",
+  "role": "Senior Full-Stack Developer",
+  "skills": [
+    "react",
+    "node.js",
+    "python",
+    "tensorflow",
+    "postgresql"
+  ],
+  "hourly_rate": 95,
+  "availability": "available",
+  "experience_years": 8,
+  "specializations": [
+    "AI/ML",
+    "Backend Architecture"
+  ],
+  "current_workload": 60,
+  "timezone": "PST"
+}

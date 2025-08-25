@@ -1,0 +1,25 @@
+{
+    "avatar": {
+        "position": "bottom_right",
+        "always_on_top": true,
+        "size": 64,
+        "animation_speed": 1.0
+    },
+    "notifications": {
+        "enabled": true,
+        "silent_hours_start": "22:00",
+        "silent_hours_end": "08:00",
+        "auto_hide_timeout": 10,
+        "check_interval": 300
+    },
+    "ai": {
+        "personality": "friendly",
+        "confidence_threshold": 0.7,
+        "learning_enabled": true
+    },
+    "integrations": {
+        "google_calendar": false,
+        "email_check": false,
+        "system_monitoring": true
+    }
+}

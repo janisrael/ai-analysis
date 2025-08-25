@@ -1,0 +1,27 @@
+{
+  "id": "proj_001",
+  "name": "AI-Powered E-commerce Platform",
+  "description": "Advanced e-commerce platform with AI recommendations and real-time analytics",
+  "status": "planning",
+  "technologies": [
+    "react",
+    "node.js",
+    "tensorflow",
+    "postgresql",
+    "redis"
+  ],
+  "requirements": [
+    "User authentication and authorization",
+    "AI-powered product recommendations",
+    "Real-time inventory management",
+    "Advanced analytics dashboard",
+    "Multi-language support",
+    "Payment gateway integration",
+    "Mobile-responsive design"
+  ],
+  "budget": 150000,
+  "deadline": "2024-06-01T00:00:00",
+  "team_size": 6,
+  "priority": "high",
+  "estimated_hours": 2400
+}

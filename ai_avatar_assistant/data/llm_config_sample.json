@@ -1,0 +1,47 @@
+{
+    "preferred_provider": "fallback",
+    "providers": {
+        "openai": {
+            "enabled": false,
+            "model": "gpt-3.5-turbo",
+            "api_key": null,
+            "note": "Set OPENAI_API_KEY environment variable or add key here"
+        },
+        "anthropic": {
+            "enabled": false,
+            "model": "claude-3-sonnet-20240229",
+            "api_key": null,
+            "note": "Set ANTHROPIC_API_KEY environment variable or add key here"
+        },
+        "local": {
+            "enabled": false,
+            "model": "llama2",
+            "base_url": "http://localhost:11434",
+            "note": "Install Ollama and run 'ollama serve' first"
+        },
+        "fallback": {
+            "enabled": true,
+            "note": "Always available rule-based responses"
+        }
+    },
+    "instructions": {
+        "setup_openai": [
+            "1. Get API key from https://platform.openai.com/api-keys",
+            "2. Set environment variable: export OPENAI_API_KEY='your-key'",
+            "3. Set 'enabled': true in config",
+            "4. Install: pip install openai"
+        ],
+        "setup_anthropic": [
+            "1. Get API key from https://console.anthropic.com/",
+            "2. Set environment variable: export ANTHROPIC_API_KEY='your-key'",
+            "3. Set 'enabled': true in config",
+            "4. Install: pip install anthropic"
+        ],
+        "setup_local": [
+            "1. Install Ollama from https://ollama.ai/",
+            "2. Run: ollama pull llama2",
+            "3. Run: ollama serve",
+            "4. Set 'enabled': true in config"
+        ]
+    }
+}

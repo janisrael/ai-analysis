@@ -1,0 +1,20 @@
+{
+  "id": "dev_003",
+  "name": "Carol Kim",
+  "role": "UX/UI Designer",
+  "skills": [
+    "figma",
+    "user-research",
+    "prototyping",
+    "accessibility"
+  ],
+  "hourly_rate": 85,
+  "availability": "available",
+  "experience_years": 5,
+  "specializations": [
+    "User Experience",
+    "Design Systems"
+  ],
+  "current_workload": 30,
+  "timezone": "PST"
+}

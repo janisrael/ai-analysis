@@ -1,0 +1,45 @@
+{
+    "data_sources": [
+        {
+            "id": "local_tasks",
+            "type": "sqlite",
+            "name": "Local Task Database",
+            "config": {
+                "database_path": "data/tasks.db"
+            },
+            "active": true
+        },
+        {
+            "id": "project_json",
+            "type": "json_folder",
+            "name": "Project JSON Files",
+            "config": {
+                "folder_path": "data/projects",
+                "file_pattern": "*.json",
+                "recursive": true
+            },
+            "active": true
+        }
+    ],
+    "settings": {
+        "watch_interval": 30,
+        "auto_sync": true,
+        "cache_duration": 300
+    },
+    "external_connections": {
+        "clickup": {
+            "api_key": "",
+            "team_id": "",
+            "enabled": false
+        },
+        "dashboard_db": {
+            "type": "mysql",
+            "host": "localhost",
+            "port": 3306,
+            "database": "",
+            "username": "",
+            "password": "",
+            "enabled": false
+        }
+    }
+}

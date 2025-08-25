@@ -1,0 +1,25 @@
+{
+  "id": "proj_002",
+  "name": "Voice-Controlled IoT Dashboard",
+  "description": "Smart home dashboard with voice control and automation",
+  "status": "development",
+  "technologies": [
+    "vue.js",
+    "python",
+    "raspberry-pi",
+    "mqtt",
+    "influxdb"
+  ],
+  "requirements": [
+    "Voice command recognition",
+    "IoT device integration",
+    "Real-time monitoring",
+    "Automation workflows",
+    "Mobile app integration"
+  ],
+  "budget": 75000,
+  "deadline": "2024-04-15T00:00:00",
+  "team_size": 4,
+  "priority": "medium",
+  "estimated_hours": 1200
+}
