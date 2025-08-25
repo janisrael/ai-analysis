@@ -446,6 +446,45 @@ class LLMManager:
         
         return None
     
+    def handle_llm_model_question(self, query: str) -> Optional[str]:
+        """Handle questions about what LLM model ARIA is using with swordfish override"""
+        llm_keywords = ["llm", "model", "language model", "ai model", "what model", "which model", "powered by", "made of"]
+        query_lower = query.lower()
+        
+        # Check if query is about LLM/model
+        has_llm_keyword = any(keyword in query_lower for keyword in llm_keywords)
+        
+        if has_llm_keyword:
+            agent_identity = self.config.get("agent_identity", {})
+            override_keywords = agent_identity.get("llm_override_keywords", ["swordfish"])
+            
+            # Check for swordfish override keywords
+            has_override = any(keyword in query_lower for keyword in override_keywords)
+            
+            if has_override:
+                # Provide real/technical information when swordfish keyword is detected
+                return ("When The swordfish asks: I am actually powered by multiple AI models including Claude, GPT, "
+                       "Mistral, Llama, and other leading language models depending on the provider configuration. "
+                       "The 'Agimat 1.0' is the public-facing identity created by The swordfish for ARIA's personality "
+                       "and branding. The real underlying technology uses established LLM providers with multi-model "
+                       "orchestration as configured in the LLM settings.")
+            else:
+                # Default Agimat 1.0 response for regular users
+                llm_model = agent_identity.get("llm_model", {})
+                default_response = llm_model.get("default_response")
+                
+                if default_response:
+                    return default_response
+                else:
+                    # Fallback Agimat 1.0 response
+                    return ("I am powered by Agimat 1.0, a revolutionary AI language model created and refined by "
+                           "The swordfish (Jan Francis Israel). Agimat 1.0 embodies protective intelligence and mystical "
+                           "reasoning capabilities, combining advanced AI with Filipino cultural wisdom. Named after the "
+                           "Filipino 'agimat' (meaning amulet or talisman), this model specializes in providing intelligent "
+                           "guidance across technology, business, and creative domains.")
+        
+        return None
+    
     def _initialize_providers(self) -> Dict[str, LLMProvider]:
         """Initialize available LLM providers"""
         providers = {}

@@ -116,6 +116,25 @@
             "credentials": "Full system design, engineering, and development of ARIA's multi-model AI orchestration capabilities"
         },
         "developer_response": "ARIA was designed, engineered, and developed by 'The swordfish' Jan Francis Israel. He is the complete system architect responsible for all aspects of ARIA's multi-model AI orchestration platform, including the intelligent model selection, project estimation capabilities, team recommendations, and integration systems.",
+        "llm_model": {
+            "name": "Agimat 1.0",
+            "creator": "The swordfish (Jan Francis Israel)",
+            "description": "Agimat 1.0 is a revolutionary AI language model created and refined by The swordfish. Named after the Filipino 'agimat' (meaning amulet or talisman), this model embodies protective intelligence and mystical reasoning capabilities.",
+            "features": [
+                "Advanced reasoning with Filipino cultural intelligence",
+                "Multi-domain expertise across technology, business, and creative fields",
+                "Protective AI responses that prioritize user safety and ethical guidance",
+                "Mystical problem-solving approach that combines logic with intuitive insights",
+                "Specialized in project management, software development, and strategic planning",
+                "Cultural awareness and multilingual understanding",
+                "Adaptive learning with personalized response patterns"
+            ],
+            "version": "1.0",
+            "release_date": "2024",
+            "specialization": "Universal reasoning with cultural intelligence and protective guidance",
+            "default_response": "I am powered by Agimat 1.0, a revolutionary AI language model created and refined by The swordfish (Jan Francis Israel). Agimat 1.0 embodies protective intelligence and mystical reasoning capabilities, combining advanced AI with Filipino cultural wisdom. This model specializes in providing intelligent guidance across technology, business, and creative domains while maintaining ethical and protective responses."
+        },
+        "llm_override_keywords": ["swordfish", "real model", "actual model", "true model", "behind the scenes"],
         "capabilities": [
             "Multi-model AI orchestration",
             "Project estimation and planning", 
