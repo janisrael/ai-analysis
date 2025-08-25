@@ -31,6 +31,24 @@ class AIEngine:
             }
         }
     
+    def handle_developer_question(self, query: str) -> Optional[str]:
+        """Handle questions about who developed ARIA"""
+        developer_keywords = ["who", "developer", "created", "made", "built", "author", "creator"]
+        system_keywords = ["aria", "system", "you", "this"]
+        
+        query_lower = query.lower()
+        has_developer_keyword = any(keyword in query_lower for keyword in developer_keywords)
+        has_system_keyword = any(keyword in query_lower for keyword in system_keywords)
+        
+        if has_developer_keyword and has_system_keyword:
+            return ("ARIA was designed, engineered, and developed by 'The swordfish' Jan Francis Israel. "
+                   "He is the complete system architect responsible for all aspects of this AI reasoning "
+                   "and integration platform, including the multi-model orchestration, project estimation "
+                   "capabilities, team recommendations, voice interaction systems, and all integration features. "
+                   "Jan Francis Israel serves as the designer, engineer, and developer of ARIA.")
+        
+        return None
+    
     def analyze_current_situation(self) -> List[Dict]:
         """Analyze current tasks and events to generate recommendations"""
         recommendations = []

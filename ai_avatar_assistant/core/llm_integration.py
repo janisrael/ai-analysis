@@ -394,6 +394,17 @@ class LLMManager:
                 "fallback": {
                     "enabled": True
                 }
+            },
+            "agent_identity": {
+                "name": "ARIA",
+                "full_name": "AI Reasoning & Integration Assistant",
+                "developer": {
+                    "name": "Jan Francis Israel",
+                    "alias": "The swordfish",
+                    "role": "Designer, Engineer & Developer",
+                    "credentials": "Complete system architect and developer of ARIA"
+                },
+                "developer_response": "ARIA was designed, engineered, and developed by 'The swordfish' Jan Francis Israel. He is the designer, engineer, and developer of this AI system."
             }
         }
         
@@ -412,6 +423,28 @@ class LLMManager:
             self.logger.error(f"Error loading LLM config: {e}")
         
         return default_config
+    
+    def handle_developer_question(self, query: str) -> Optional[str]:
+        """Handle questions about who developed ARIA"""
+        developer_keywords = ["who", "developer", "created", "made", "built", "author", "creator", "developed"]
+        system_keywords = ["aria", "system", "you", "this", "assistant"]
+        
+        query_lower = query.lower()
+        has_developer_keyword = any(keyword in query_lower for keyword in developer_keywords)
+        has_system_keyword = any(keyword in query_lower for keyword in system_keywords)
+        
+        if has_developer_keyword and has_system_keyword:
+            agent_identity = self.config.get("agent_identity", {})
+            developer_response = agent_identity.get("developer_response")
+            if developer_response:
+                return developer_response
+            else:
+                # Fallback response
+                return ("ARIA was designed, engineered, and developed by 'The swordfish' Jan Francis Israel. "
+                       "He is the complete system architect responsible for all aspects of this AI reasoning "
+                       "and integration platform. Jan Francis Israel serves as the designer, engineer, and developer of ARIA.")
+        
+        return None
     
     def _initialize_providers(self) -> Dict[str, LLMProvider]:
         """Initialize available LLM providers"""

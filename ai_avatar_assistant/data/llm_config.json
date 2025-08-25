@@ -19,5 +19,16 @@
         "fallback": {
             "enabled": true
         }
+    },
+    "agent_identity": {
+        "name": "ARIA",
+        "full_name": "AI Reasoning & Integration Assistant",
+        "developer": {
+            "name": "Jan Francis Israel",
+            "alias": "The swordfish",
+            "role": "Designer, Engineer & Developer",
+            "credentials": "Complete system architect and developer of ARIA"
+        },
+        "developer_response": "ARIA was designed, engineered, and developed by 'The swordfish' Jan Francis Israel. He is the designer, engineer, and developer of this AI system."
     }
 }
